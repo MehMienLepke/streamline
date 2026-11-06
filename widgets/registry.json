@@ -1,0 +1,12 @@
+{
+  "widgets": [
+    {
+      "id": "klok",
+      "name": "Klok",
+      "description": "Grote klok met de datum van vandaag",
+      "icon": "clock",
+      "version": "1.0.0",
+      "file": "widgets/klok.js"
+    }
+  ]
+}

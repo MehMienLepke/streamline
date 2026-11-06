@@ -1,0 +1,3 @@
+# Persoonlijke instellingen en reservekopieen nooit naar GitHub
+*.streamline.json
+backups/

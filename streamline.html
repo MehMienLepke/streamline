@@ -1,0 +1,2379 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="streamline-app" content="1.0.1">
+<!-- Privacy-slot: deze pagina mag alleen GitHub lezen (updates/widgets). Elk ander verzoek om gegevens te versturen wordt door de browser geblokkeerd. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline'; img-src * data: blob:; media-src *; connect-src https://raw.githubusercontent.com; font-src data:; form-action 'none'; base-uri 'none'">
+<title>Streamline</title>
+<style>
+:root{
+  --bg:#ECEBE7;--surface:#FFFFFF;--surface-2:#F5F4F0;--ink:#171816;--muted:#73766F;--line:#E3E1DB;
+  --accent:#2E5E4E;--accent-ink:#FFFFFF;--accent-soft:#E3ECE7;
+  --hi:#D64533;--mid:#E8892B;--lo:#E2B93B;
+  --r:22px;--r-sm:13px;--r-xs:9px;
+  --shadow:0 1px 2px rgba(20,22,20,.04),0 8px 24px -12px rgba(20,22,20,.10);
+  --shadow-lg:0 24px 60px -20px rgba(15,17,15,.35),0 2px 6px rgba(15,17,15,.06);
+  --font:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --font-display:Bahnschrift,"Segoe UI Variable Display","DIN Alternate","Segoe UI",system-ui,sans-serif;
+  --title-font:var(--font-display);--title-color:var(--ink);--title-weight:600;
+  --cw:40px;--rh:36px;--gap:14px;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);-webkit-font-smoothing:antialiased;overflow-x:hidden;transition:background .25s}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.ic{display:block;flex:none}
+::selection{background:var(--accent-soft)}
+
+/* ---------- top bar ---------- */
+#topbar{display:flex;align-items:center;gap:16px;padding:22px 32px 14px;position:relative;z-index:40}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.brand-mark{width:40px;height:40px;color:var(--accent);flex:none}
+.brand-name{font-family:var(--font-display);font-weight:600;font-size:27px;letter-spacing:.01em;line-height:1}
+.brand-sub{font-family:var(--font-display);font-size:27px;line-height:1;color:var(--muted);font-weight:300;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand-sub:before{content:"/";margin:0 12px 0 2px;opacity:.45}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
+.round{width:46px;height:46px;border-radius:50%;border:0;background:var(--surface);display:grid;place-items:center;box-shadow:var(--shadow);transition:transform .15s,background .15s}
+.round:hover{transform:translateY(-1px)}
+.round.on{background:var(--ink);color:var(--bg)}
+.pill{height:42px;padding:0 18px;border-radius:999px;border:0;background:var(--surface);display:inline-flex;align-items:center;gap:8px;box-shadow:var(--shadow);font-weight:600;font-size:13px}
+.pill.accent{background:var(--accent);color:var(--accent-ink)}
+.pill.ghost{background:transparent;box-shadow:none;border:1px solid var(--line)}
+.pill.update{background:var(--accent);color:var(--accent-ink);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent)}50%{box-shadow:0 0 0 8px transparent}}
+.edit-only{display:none!important}
+body.editing .edit-only{display:inline-flex!important}
+.save-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);opacity:.0;transition:opacity .4s}
+.save-dot.busy{opacity:.9}
+
+#banner{margin:0 32px 8px;padding:12px 16px;border-radius:var(--r-sm);background:var(--accent-soft);display:none;align-items:center;gap:12px;font-size:13px}
+#banner.show{display:flex}
+#banner button{margin-left:auto}
+
+/* ---------- canvas & grid ---------- */
+#canvas{position:relative;margin:6px 32px 48px;min-height:calc(100vh - 140px)}
+body.editing #canvas{background-image:var(--gridimg);background-repeat:repeat;border-radius:var(--r-sm)}
+.item{position:absolute;transition:left .14s ease,top .14s ease,width .14s ease,height .14s ease,box-shadow .2s;z-index:3}
+.item.t-box{z-index:1}
+.item.t-title{z-index:2}
+.item.dragging{transition:none;z-index:30!important;cursor:grabbing}
+.item.dragging .card{box-shadow:var(--shadow-lg)}
+.card{width:100%;height:100%;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.card.flat{background:transparent;box-shadow:none;border-radius:0;overflow:visible}
+.card-head{display:flex;align-items:center;gap:8px;padding:16px 20px 6px;font-weight:650;font-size:15px}
+.card-head .sub{margin-left:auto;font-weight:500;color:var(--muted);font-size:12px}
+.card-body{flex:1;min-height:0;padding:6px 20px 18px;display:flex;flex-direction:column}
+
+/* edit chrome */
+.chrome{display:none}
+body.editing .chrome{display:block}
+.shield{position:absolute;inset:0;z-index:5;cursor:grab;border-radius:var(--r)}
+body.editing .item:not(.locked) .card{outline:1.5px dashed color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:3px}
+body.editing .item.locked .card{outline:1.5px solid color-mix(in srgb,var(--muted) 40%,transparent);outline-offset:3px}
+.item.locked .shield{cursor:not-allowed}
+.grip{position:absolute;top:-11px;left:50%;transform:translateX(-50%);z-index:8;height:22px;padding:0 12px;border-radius:999px;background:var(--ink);color:var(--bg);display:flex;align-items:center;cursor:grab;box-shadow:var(--shadow)}
+.grip span{display:block;width:26px;height:4px;border-top:2px solid currentColor;border-bottom:2px solid currentColor;opacity:.85;height:7px}
+.item.locked .grip{background:var(--muted);cursor:not-allowed}
+.tools{position:absolute;top:8px;right:8px;z-index:9;display:flex;gap:4px;opacity:0;transition:opacity .15s}
+.item:hover .tools,.item.locked .tools{opacity:1}
+.item:hover{z-index:20}
+.tools button{width:30px;height:30px;border-radius:50%;border:0;background:var(--surface);color:var(--ink);display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.14)}
+.tools button:hover{background:var(--accent);color:var(--accent-ink)}
+.tools button.lock-on{background:var(--ink);color:var(--bg)}
+.item.locked .tools .nl{display:none}
+.resize{position:absolute;right:-6px;bottom:-6px;width:22px;height:22px;z-index:9;cursor:nwse-resize;border-radius:50%;background:var(--accent);border:3px solid var(--surface);box-shadow:var(--shadow)}
+.item.locked .resize{display:none}
+.size-badge{position:absolute;left:10px;bottom:10px;z-index:9;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--ink);color:var(--bg);opacity:0;transition:opacity .15s}
+.item.dragging .size-badge,.item.resizing .size-badge{opacity:1}
+.item.resizing{transition:none}
+
+/* ---------- floating panels ---------- */
+.panel{position:fixed;z-index:60;width:380px;max-height:min(78vh,760px);background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow-lg);display:none;flex-direction:column;overflow:hidden;border:1px solid var(--line)}
+.panel.show{display:flex}
+.panel-grip{height:26px;display:flex;justify-content:center;align-items:center;cursor:grab;flex:none}
+.panel-grip span{width:44px;height:5px;border-radius:999px;background:var(--line)}
+.panel-grip:hover span{background:var(--muted)}
+.panel-head{display:flex;align-items:center;gap:10px;padding:0 20px 12px}
+.panel-head h3{margin:0;font:600 19px var(--font-display)}
+.panel-head .x{margin-left:auto}
+.panel-body{overflow:auto;padding:0 20px 20px;flex:1}
+.iconbtn{width:34px;height:34px;border-radius:50%;border:0;background:var(--surface-2);display:grid;place-items:center}
+.iconbtn:hover{background:var(--accent-soft)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;padding:0 20px 12px}
+.tabs button{border:0;background:transparent;padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.tabs button.on{background:var(--ink);color:var(--bg)}
+.repo-group{margin:4px 0 16px}
+.repo-group h4,.sect h4{margin:0 0 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.repo-item{display:flex;align-items:center;gap:12px;padding:10px;border-radius:var(--r-sm);cursor:pointer;border:1px solid transparent;background:var(--surface-2);margin-bottom:6px;width:100%;text-align:left}
+.repo-item:hover{border-color:var(--accent);background:var(--accent-soft)}
+.repo-item .ri{width:38px;height:38px;border-radius:12px;background:var(--surface);display:grid;place-items:center;color:var(--accent);flex:none}
+.repo-item b{display:block;font-size:13.5px}
+.repo-item small{color:var(--muted);font-size:12px;line-height:1.3;display:block}
+.repo-item .add{margin-left:auto;color:var(--muted)}
+
+/* ---------- forms ---------- */
+.sect{margin-bottom:20px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.field>label,.lbl{font-size:12px;font-weight:650;color:var(--muted)}
+.inp,select.inp,textarea.inp{width:100%;border:1px solid var(--line);background:var(--surface-2);border-radius:var(--r-xs);padding:9px 11px;outline:none;transition:border .15s}
+.inp:focus{border-color:var(--accent);background:var(--surface)}
+textarea.inp{min-height:70px;resize:vertical}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{min-width:0}
+.grow{flex:1}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;cursor:pointer}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+input[type=range]{accent-color:var(--accent);width:100%}
+input[type=color]{width:42px;height:34px;border:1px solid var(--line);border-radius:var(--r-xs);padding:2px;background:var(--surface-2);cursor:pointer}
+.btn{border:0;border-radius:999px;padding:9px 16px;font-weight:650;font-size:13px;background:var(--surface-2);display:inline-flex;align-items:center;gap:7px;justify-content:center}
+.btn:hover{background:var(--accent-soft)}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{color:var(--hi)}
+.btn.sm{padding:6px 11px;font-size:12px}
+.seg{display:inline-flex;background:var(--surface-2);border-radius:999px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.hint{font-size:12px;color:var(--muted);line-height:1.45;margin:4px 0 10px}
+.list-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r-xs);background:var(--surface-2);margin-bottom:6px}
+.list-row.on{outline:2px solid var(--accent)}
+.badge{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+
+/* theme swatches */
+.swatches{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.swatch{border:2px solid transparent;border-radius:var(--r-sm);padding:8px;background:var(--surface-2);cursor:pointer;text-align:left}
+.swatch.on{border-color:var(--accent)}
+.swatch .sw{height:42px;border-radius:9px;display:flex;align-items:flex-end;padding:6px;gap:4px}
+.swatch .sw i{width:12px;height:12px;border-radius:50%;display:block}
+.swatch b{display:block;font-size:12px;margin-top:6px}
+
+/* ---------- modals ---------- */
+.mroot{position:fixed;inset:0;z-index:100;display:none;place-items:center;background:rgba(10,12,10,.38);backdrop-filter:blur(3px);padding:20px}
+.mroot.show{display:grid}
+.modal{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow-lg);width:min(560px,100%);max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.modal.wide{width:min(820px,100%)}
+.modal-head{display:flex;align-items:center;padding:20px 22px 8px;gap:10px}
+.modal-head h3{margin:0;font:600 20px var(--font-display)}
+.modal-head .iconbtn{margin-left:auto}
+.modal-body{padding:8px 22px 18px;overflow:auto}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;padding:14px 22px;border-top:1px solid var(--line)}
+.modal-foot .left{margin-right:auto}
+
+.icongrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;max-height:360px;overflow:auto;padding:2px}
+.icongrid button{border:1px solid transparent;background:var(--surface-2);border-radius:var(--r-xs);padding:10px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10px;color:var(--muted)}
+.icongrid button:hover,.icongrid button.on{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+
+/* ---------- toasts & alarm ---------- */
+#toasts{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:999px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);animation:tin .25s ease;max-width:80vw}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}}
+.alarm{position:fixed;right:24px;bottom:24px;z-index:210;width:340px;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow-lg);padding:18px 20px;border-left:6px solid var(--accent);animation:shake .6s ease 2}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.alarm h4{margin:0 0 4px;font:600 17px var(--font-display);display:flex;gap:8px;align-items:center;color:var(--accent)}
+.alarm p{margin:0 0 14px;font-size:14px}
+.alarm .row{flex-wrap:wrap}
+
+/* popover */
+.pop{position:fixed;z-index:150;background:var(--surface);border-radius:var(--r-sm);box-shadow:var(--shadow-lg);border:1px solid var(--line);padding:8px;min-width:200px}
+.pop button.opt{display:flex;width:100%;border:0;background:transparent;padding:8px 10px;border-radius:8px;text-align:left;gap:8px;align-items:center;font-size:13px}
+.pop button.opt:hover{background:var(--accent-soft)}
+.pop hr{border:0;border-top:1px solid var(--line);margin:6px 0}
+
+/* ---------- widgets ---------- */
+/* nav */
+.nav{display:flex;gap:6px;align-items:center;height:100%;padding:6px;background:var(--surface);border-radius:999px;box-shadow:var(--shadow);overflow:auto;scrollbar-width:none}
+.nav.v{flex-direction:column;border-radius:var(--r);padding:8px;align-items:stretch}
+.nav button{border:0;background:transparent;border-radius:999px;height:40px;min-width:40px;padding:0 14px;display:flex;align-items:center;gap:8px;justify-content:center;font-weight:600;font-size:13px;color:var(--muted);white-space:nowrap;flex:none}
+.nav.icons button{padding:0;width:44px;height:44px}
+.nav.v button{justify-content:flex-start}
+.nav.v.icons button{justify-content:center;align-self:center}
+.nav button:hover{color:var(--ink);background:var(--surface-2)}
+.nav button.on{background:var(--ink);color:var(--bg)}
+.nav button.addpage{border:1.5px dashed var(--line)}
+
+/* link button */
+.lb{width:100%;height:100%;border:0;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px;text-align:center;transition:transform .15s,box-shadow .15s;color:var(--ink);text-decoration:none;overflow:hidden}
+.lb:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.lb.row-layout{flex-direction:row;justify-content:flex-start;padding:10px 18px;gap:14px;text-align:left}
+.lb .lbi{width:46px;height:46px;border-radius:15px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
+.lb .lbi img{width:26px;height:26px;border-radius:5px}
+.lb .lbt{font-weight:650;font-size:13.5px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.lb .lbs{font-size:11.5px;color:var(--muted);font-weight:500}
+.lb.accent{background:var(--accent);color:var(--accent-ink)}
+.lb.accent .lbi{background:color-mix(in srgb,var(--accent-ink) 16%,transparent);color:var(--accent-ink)}
+.lb.accent .lbs{color:color-mix(in srgb,var(--accent-ink) 70%,transparent)}
+.lb.dark{background:var(--ink);color:var(--bg)}
+.lb.dark .lbi{background:color-mix(in srgb,var(--bg) 14%,transparent);color:var(--bg)}
+.lb.outline{background:transparent;box-shadow:none;border:1.5px solid var(--line)}
+.lb .run{position:absolute;right:12px;top:12px;font-size:10px;font-weight:700;opacity:.6;display:flex;gap:4px;align-items:center}
+
+/* title */
+.ttl{width:100%;height:100%;display:flex;align-items:flex-end;padding:0 4px 4px;font-family:var(--title-font);color:var(--title-color);font-weight:var(--title-weight);line-height:1.1;overflow:hidden}
+.ttl.center{justify-content:center;text-align:center}.ttl.right{justify-content:flex-end;text-align:right}
+.ttl.mid{align-items:center}
+
+/* box */
+.boxv{width:100%;height:100%}
+
+/* todo */
+.todo-add{display:flex;gap:6px;align-items:center;margin-bottom:10px}
+.todo-add .inp{border-radius:999px;padding:8px 14px}
+.prio{display:flex;gap:3px;padding:3px;background:var(--surface-2);border-radius:999px}
+.prio button{width:24px;height:24px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center}
+.prio button i{width:11px;height:11px;border-radius:50%;display:block}
+.prio button.on{background:var(--surface);box-shadow:var(--shadow)}
+.pc-hoog{background:var(--hi)}.pc-medium{background:var(--mid)}.pc-laag{background:var(--lo)}
+.todo-list{flex:1;overflow:auto;margin:0 -6px;padding:0 6px}
+.todo{display:flex;align-items:center;gap:10px;padding:9px 10px 9px 0;border-radius:var(--r-xs);position:relative;background:var(--surface-2);margin-bottom:6px;overflow:hidden}
+.todo .bar{width:5px;align-self:stretch;flex:none}
+.todo .cb{width:20px;height:20px;border-radius:7px;border:2px solid var(--line);background:var(--surface);display:grid;place-items:center;flex:none;color:transparent;padding:0}
+.todo.done .cb{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.todo .tt{flex:1;min-width:0;font-size:13.5px;overflow-wrap:anywhere;outline:none}
+.todo.done .tt{text-decoration:line-through;color:var(--muted)}
+.todo.done{opacity:.65}
+.todo .meta{font-size:11px;color:var(--accent);font-weight:700;white-space:nowrap}
+.todo .ta{opacity:0;display:flex;gap:2px;transition:opacity .15s}
+.todo:hover .ta,.todo .ta.has{opacity:1}
+.mini{width:26px;height:26px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center;color:var(--muted);padding:0}
+.mini:hover{background:var(--surface);color:var(--ink)}
+.mini.on{color:var(--accent)}
+.dropping{outline:2.5px dashed var(--accent)!important;outline-offset:-6px;background:var(--accent-soft)!important}
+.empty{color:var(--muted);font-size:12.5px;text-align:center;padding:16px 8px}
+.todo-foot{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--muted);padding-top:6px}
+.linkbtn{border:0;background:none;color:var(--muted);font-size:11.5px;font-weight:600;padding:2px}
+.linkbtn:hover{color:var(--ink)}
+
+/* notes */
+.notes{flex:1;overflow:auto;display:flex;flex-direction:column;gap:10px;margin:0 -6px;padding:0 6px 4px}
+.note{background:var(--surface-2);border-radius:var(--r-sm);padding:4px 4px 6px;position:relative;border:1.5px solid transparent;transition:border .15s}
+.note:focus-within{border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:var(--surface)}
+.note.due{border-color:var(--accent)}
+.nt{display:none;gap:1px;padding:3px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:4px}
+.note:focus-within .nt{display:flex}
+.nt button{width:28px;height:28px;border:0;background:transparent;border-radius:7px;display:grid;place-items:center;color:var(--muted)}
+.nt button:hover{background:var(--accent-soft);color:var(--ink)}
+.ne{outline:none;padding:6px 10px;min-height:38px;font-size:13.5px;overflow-wrap:anywhere}
+.ne:empty:before{content:attr(data-ph);color:var(--muted)}
+.ne h3{font:600 16px var(--font-display);margin:4px 0}
+.ne ul,.ne ol{margin:4px 0;padding-left:22px}
+.ne ul.chk{list-style:none;padding-left:4px}
+.ne ul.chk li{padding-left:24px;position:relative;cursor:pointer}
+.ne ul.chk li:before{content:"";position:absolute;left:0;top:3px;width:14px;height:14px;border:2px solid var(--muted);border-radius:4px}
+.ne ul.chk li.ok{text-decoration:line-through;color:var(--muted)}
+.ne ul.chk li.ok:before{background:var(--accent);border-color:var(--accent)}
+.ne mark{background:color-mix(in srgb,var(--lo) 55%,transparent);color:inherit;border-radius:3px;padding:0 2px}
+.ne a{color:var(--accent)}
+.nf{display:flex;align-items:center;gap:4px;padding:0 6px}
+.nf .when{font-size:11px;color:var(--muted);margin-right:auto}
+.nf .rem{font-size:11px;font-weight:700;color:var(--accent);display:flex;gap:4px;align-items:center}
+
+/* radio */
+.radio{display:flex;flex-direction:column;height:100%;gap:10px}
+.radio-now{display:flex;align-items:center;gap:14px;flex:1;min-height:0}
+.radio-play{width:56px;height:56px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none;box-shadow:var(--shadow)}
+.radio-play:hover{filter:brightness(1.08)}
+.radio-meta{min-width:0;flex:1}
+.radio-meta b{display:block;font:600 18px var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.radio-meta small{color:var(--muted);font-size:12px;display:flex;gap:6px;align-items:center}
+.eq{display:inline-flex;gap:2px;align-items:flex-end;height:12px}
+.eq i{width:3px;background:var(--accent);border-radius:2px;animation:eq 1s infinite ease-in-out}
+.eq i:nth-child(2){animation-delay:.2s}.eq i:nth-child(3){animation-delay:.4s}
+@keyframes eq{0%,100%{height:3px}50%{height:12px}}
+.radio-ctrl{display:flex;gap:8px;align-items:center}
+
+/* cropper */
+.cr{display:flex;flex-direction:column;height:100%;gap:10px;min-height:0}
+.cr-drop{flex:1;border:2px dashed var(--line);border-radius:var(--r-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);text-align:center;padding:16px;cursor:pointer;transition:all .15s}
+.cr-drop:hover{border-color:var(--accent);color:var(--ink)}
+.cr-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cr-bar .inp{width:auto;padding:6px 10px}
+.cr-main{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cr-main.stack{grid-template-columns:1fr;grid-template-rows:1fr 1fr}
+.cr-pane{background:var(--surface-2);border-radius:var(--r-sm);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:0}
+.cr-pane .lab{position:absolute;left:10px;top:8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);z-index:2;background:var(--surface);padding:2px 8px;border-radius:999px}
+.cr-stage{position:relative;cursor:crosshair;touch-action:none}
+.cr-stage img{display:block;max-width:100%;max-height:100%;user-select:none;-webkit-user-drag:none}
+.cr-rect{position:absolute;box-shadow:0 0 0 9999px rgba(0,0,0,.45);border:2px solid #fff;pointer-events:none;border-radius:3px}
+.cr-fp{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:3px solid #fff;background:var(--accent);box-shadow:0 0 0 2px rgba(0,0,0,.35);pointer-events:none}
+.cr-prev{max-width:calc(100% - 20px);max-height:calc(100% - 44px);margin-top:20px;box-shadow:var(--shadow);border-radius:4px;background:repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0 0/14px 14px}
+.cr-foot{display:flex;gap:10px;align-items:center}
+.cr-thumbs{display:flex;gap:6px;overflow:auto;flex:1;padding:2px}
+.cr-thumb{width:52px;height:52px;border-radius:10px;overflow:hidden;flex:none;border:2.5px solid transparent;position:relative;cursor:pointer;background:var(--surface-2);padding:0}
+.cr-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.cr-thumb.on{border-color:var(--accent)}
+.cr-thumb .rm{position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:0;font-size:10px;line-height:16px;padding:0;display:none}
+.cr-thumb:hover .rm{display:block}
+.cr-add{width:52px;height:52px;border-radius:10px;border:2px dashed var(--line);background:transparent;display:grid;place-items:center;color:var(--muted);flex:none}
+.cr-info{font-size:11.5px;color:var(--muted)}
+.cr-warn{color:var(--mid);font-weight:700}
+
+/* placeholder */
+.missing{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;height:100%;gap:6px;color:var(--muted);padding:14px;font-size:12.5px}
+
+/* steps editor */
+.step{display:grid;grid-template-columns:120px 1fr auto;gap:6px;align-items:start;padding:8px;background:var(--surface-2);border-radius:var(--r-xs);margin-bottom:6px}
+.step .sf{display:flex;flex-direction:column;gap:6px}
+.step .sa{display:flex;gap:2px}
+.tree{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-xs);padding:8px}
+.tree .pg{font-weight:700;margin:6px 0 4px}
+.tree label{display:flex;gap:8px;align-items:center;padding:3px 0;font-size:13px}
+.tree .sub{padding-left:24px}
+
+.welcome-mark{width:64px;height:64px;color:var(--accent);margin-bottom:6px}
+kbd{font:600 11px var(--font);background:var(--surface-2);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 5px}
+
+.t-nav .shield{display:none}
+
+.t-nav .card.flat{display:flex;flex-direction:row;align-items:center}
+.t-nav .card.flat:has(.nav.v){align-items:stretch}
+.nav:not(.v){width:fit-content;max-width:100%;height:min(100%,58px)}
+.nav.v{height:100%;width:100%}
+
+</style>
+</head>
+<body>
+<header id="topbar">
+  <div class="brand">
+    <div class="brand-mark" id="brandmark"></div>
+    <span class="brand-name">Streamline</span>
+    <span class="brand-sub" id="brandsub"></span>
+  </div>
+  <div class="top-actions">
+    <span class="save-dot" id="savedot" title="Opslaan…"></span>
+    <button class="pill edit-only" id="btn-repo">Widgets</button>
+    <button class="pill edit-only" id="btn-settings">Instellingen</button>
+    <button class="pill accent edit-only" id="btn-done">Klaar</button>
+    <button class="pill update" id="updatebtn" style="display:none" title="Er is een update beschikbaar">Update</button>
+    <button class="round" id="gear" title="Dashboard aanpassen" aria-label="Dashboard aanpassen"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </div>
+</header>
+<div id="banner"></div>
+<main id="canvas"></main>
+
+<section class="panel" id="panel-repo" data-name="repo" aria-label="Widgets">
+  <div class="panel-grip" title="Sleep om te verplaatsen"><span></span></div>
+  <div class="panel-head"><h3>Widgets</h3><button class="iconbtn x" title="Sluiten"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="panel-body" id="repo-body"></div>
+</section>
+<section class="panel" id="panel-settings" data-name="settings" aria-label="Instellingen" style="width:430px">
+  <div class="panel-grip" title="Sleep om te verplaatsen"><span></span></div>
+  <div class="panel-head"><h3>Instellingen</h3><button class="iconbtn x" title="Sluiten"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="tabs" id="settings-tabs"></div>
+  <div class="panel-body" id="settings-body"></div>
+</section>
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+/* Streamline — icon catalogus (eigen lijn-iconen, 24×24, geen externe bronnen) */
+const ICONS = {
+  home:['huis start thuis','<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-6h4v6"/>'],
+  search:['zoeken vergrootglas','<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'],
+  settings:['instellingen tandwiel','<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'],
+  lock:['slot op slot vergrendel','<rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>'],
+  unlock:['slot open ontgrendel','<rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 7.6-1.7"/>'],
+  copy:['kopieer dupliceer','<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>'],
+  trash:['verwijder prullenbak weg','<path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v5M14 11v5"/>'],
+  plus:['toevoegen nieuw plus','<path d="M12 5v14M5 12h14"/>'],
+  x:['sluiten kruis','<path d="M6 6l12 12M18 6 6 18"/>'],
+  check:['vinkje klaar gedaan','<path d="m5 12.5 4.5 4.5L19 7.5"/>'],
+  pencil:['bewerk potlood schrijven','<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'],
+  link:['link koppeling url','<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>'],
+  external:['extern nieuw tabblad openen','<path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>'],
+  globe:['wereld website internet web','<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.5 2.6 3.6 5.4 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.4-3.6-8.5S9.5 6.1 12 3.5z"/>'],
+  mail:['mail email post','<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m4 7 8 6 8-6"/>'],
+  inbox:['inbox postvak','<path d="M3 13h5l1.5 2.5h5L16 13h5"/><path d="M5.5 5.5h13L21 13v4.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V13z"/>'],
+  send:['verstuur verzenden','<path d="M21 3 10 14"/><path d="m21 3-7 18-4-7-7-4z"/>'],
+  calendar:['agenda kalender datum','<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>'],
+  clock:['klok tijd','<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'],
+  bell:['bel melding herinnering alarm','<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>'],
+  star:['ster favoriet','<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>'],
+  heart:['hart liefde','<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.3 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>'],
+  bookmark:['bladwijzer opslaan','<path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/>'],
+  folder:['map folder','<path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'],
+  file:['bestand document','<path d="M6 3h8l4.5 4.5V21H6z"/><path d="M14 3v4.5h4.5"/>'],
+  filetext:['tekst document notitie','<path d="M6 3h8l4.5 4.5V21H6z"/><path d="M14 3v4.5h4.5M9 12.5h6M9 16h6"/>'],
+  image:['afbeelding foto plaatje','<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m4 18 5-5 4 4 2.5-2.5L20 19"/>'],
+  crop:['bijsnijden uitsnede crop','<path d="M6 2.5V16a2 2 0 0 0 2 2h13.5"/><path d="M2.5 6H16a2 2 0 0 1 2 2v13.5"/>'],
+  radio:['radio muziek zender','<rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M7 8l10-4.5"/><circle cx="15.5" cy="14" r="2.5"/><path d="M6.5 12.5h3M6.5 15.5h3"/>'],
+  music:['muziek noot','<path d="M9 18V5.5l11-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>'],
+  play:['afspelen play start','<path d="M7 4.5v15l12.5-7.5z"/>'],
+  pause:['pauze stop','<path d="M8 5v14M16 5v14"/>'],
+  next:['volgende','<path d="M5 5v14l10-7z"/><path d="M19 5v14"/>'],
+  prev:['vorige','<path d="M19 5v14L9 12z"/><path d="M5 5v14"/>'],
+  volume:['volume geluid','<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9a4.5 4.5 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>'],
+  download:['download opslaan binnenhalen','<path d="M12 4v11"/><path d="m7 10.5 5 5 5-5"/><path d="M4.5 19.5h15"/>'],
+  upload:['upload uploaden','<path d="M12 16V5"/><path d="m7 9.5 5-5 5 5"/><path d="M4.5 19.5h15"/>'],
+  refresh:['verversen vernieuwen update','<path d="M20 11a8 8 0 0 0-14.3-4.6L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.6L20 16"/><path d="M20 20v-4h-4"/>'],
+  cloud:['cloud wolk','<path d="M7 18.5a4.5 4.5 0 0 1-.5-9 6 6 0 0 1 11.5 1.5 3.8 3.8 0 0 1-.5 7.5z"/>'],
+  user:['gebruiker persoon profiel','<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>'],
+  users:['team collega mensen klanten','<circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5.2a3.5 3.5 0 0 1 0 6.6M18 14.4a6.5 6.5 0 0 1 3.5 5.6"/>'],
+  briefcase:['werk koffer zakelijk','<rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M8.5 7.5V5.5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2M3 12.5h18"/>'],
+  building:['gebouw kantoor bedrijf','<path d="M4.5 21V4.5h10V21"/><path d="M14.5 9.5h5V21"/><path d="M3 21h18M8 8h3M8 11.5h3M8 15h3"/>'],
+  chart:['grafiek statistiek cijfers','<path d="M4 4v16h16"/><path d="M8.5 16v-4M12.5 16V8.5M16.5 16v-6"/>'],
+  trend:['trend groei lijn','<path d="m3.5 16.5 5.5-5.5 4 4 7.5-7.5"/><path d="M15 7.5h5.5V13"/>'],
+  list:['lijst opsomming','<path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.8" cy="6.5" r=".9"/><circle cx="4.8" cy="12" r=".9"/><circle cx="4.8" cy="17.5" r=".9"/>'],
+  checksquare:['to do taak checklist','<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="m8 12 3 3 5.5-6"/>'],
+  note:['notitie sticky memo','<path d="M5 3.5h14a1.5 1.5 0 0 1 1.5 1.5v9.5l-6 6H5A1.5 1.5 0 0 1 3.5 19V5A1.5 1.5 0 0 1 5 3.5z"/><path d="M14.5 20.5v-6h6"/>'],
+  layers:['lagen stapel','<path d="m12 3.5 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>'],
+  grid:['raster grid tegels','<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>'],
+  layout:['indeling dashboard','<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M3.5 9.5h17M10 9.5v11"/>'],
+  sun:['zon licht dag','<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>'],
+  moon:['maan donker nacht','<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>'],
+  palette:['kleur palet thema','<path d="M12 3.5a8.5 8.5 0 0 0 0 17c1.4 0 2-1 1.6-2.1-.5-1.3.3-2.4 1.7-2.4h2.2a3 3 0 0 0 3-3A8.5 8.5 0 0 0 12 3.5z"/><circle cx="7.5" cy="11" r="1.1"/><circle cx="10.5" cy="7.5" r="1.1"/><circle cx="15" cy="8" r="1.1"/>'],
+  type:['tekst lettertype titel','<path d="M5 6.5V4.5h14v2M12 4.5v15M9 19.5h6"/>'],
+  zap:['bliksem snel actie','<path d="M13 2.5 4.5 13.5H12l-1 8 8.5-11H12z"/>'],
+  coffee:['koffie pauze','<path d="M4 9h13v5.5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 10.5h1a3 3 0 0 1 0 6h-1.5M8 2.5v3M12 2.5v3"/>'],
+  cart:['winkel winkelwagen kopen','<circle cx="9" cy="19.5" r="1.4"/><circle cx="17.5" cy="19.5" r="1.4"/><path d="M2.5 3.5h3l2.4 11.5h11l2-8H6.5"/>'],
+  pin:['locatie kaart plek','<path d="M12 21s-6.5-5.7-6.5-11a6.5 6.5 0 0 1 13 0c0 5.3-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>'],
+  phone:['telefoon bellen','<path d="M5 3.5h3.5l1.5 4.5-2 1.5a12 12 0 0 0 6.5 6.5l1.5-2 4.5 1.5V19a2 2 0 0 1-2 2A16.5 16.5 0 0 1 3 5.5a2 2 0 0 1 2-2z"/>'],
+  message:['bericht chat','<path d="M4 5.5h16v11H9l-5 4z"/>'],
+  camera:['camera foto','<path d="M4 8h3l2-2.5h6L17 8h3v11.5H4z"/><circle cx="12" cy="13.5" r="3.5"/>'],
+  video:['video film','<rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="m16 10 5-3v10l-5-3"/>'],
+  code:['code programmeren','<path d="m8.5 7-5 5 5 5M15.5 7l5 5-5 5"/>'],
+  terminal:['terminal console','<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="m7 9.5 3 2.5-3 2.5M12.5 15h4.5"/>'],
+  database:['database data opslag','<ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/>'],
+  shield:['beveiliging schild veilig','<path d="M12 3 4.5 6v6c0 4.5 3.2 7.6 7.5 9 4.3-1.4 7.5-4.5 7.5-9V6z"/>'],
+  key:['sleutel wachtwoord','<circle cx="8" cy="15" r="4.5"/><path d="m11.2 11.8 8.8-8.8M16.5 6.5l2.5 2.5"/>'],
+  tag:['label tag','<path d="M3.5 3.5h8l9 9-8 8-9-9z"/><circle cx="8" cy="8" r="1.4"/>'],
+  flag:['vlag markeer','<path d="M5 21V4M5 4.5h12.5l-2.5 4 2.5 4H5"/>'],
+  printer:['printer afdrukken','<path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/>'],
+  book:['boek lezen','<path d="M4.5 4.5a2 2 0 0 1 2-2H19.5v16H6.5a2 2 0 0 0-2 2z"/><path d="M4.5 20.5a2 2 0 0 1 2-2h13v3h-13a2 2 0 0 1-2-1z"/>'],
+  school:['school opleiding leren','<path d="m2.5 9 9.5-4.5L21.5 9 12 13.5z"/><path d="M6.5 11v5c2.8 2.3 8.2 2.3 11 0v-5M21.5 9v5.5"/>'],
+  truck:['vrachtwagen bezorging levering','<path d="M2.5 6h11v10h-11zM13.5 9.5h4l3 3.5V16h-7"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>'],
+  wrench:['tool gereedschap onderhoud','<path d="M14.5 6.5a4 4 0 0 0 5 5L20 12l-8.5 8.5a2.5 2.5 0 0 1-3.5-3.5L16.5 8.5l-.5-.5a4 4 0 0 0-1.5-1.5z"/><path d="M14.5 6.5a4 4 0 0 1 5-3l-2.5 2.5.5 2 2 .5 2.5-2.5a4 4 0 0 1-3 5"/>'],
+  bulb:['idee lamp','<path d="M9 17.5h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.3 1 2.1v1.5h5V16c0-.8.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>'],
+  rocket:['raket lancering','<path d="M12 15.5 8.5 12c1-4 3.6-7.3 9.5-8.5-1.2 5.9-4.5 8.5-8.5 9.5"/><path d="M8.5 12 5 11.5 7.5 9h3.5M12 15.5l.5 3.5 2.5-2.5V13"/><path d="M6.5 16c-1.5.5-2.5 2-2.5 4 2 0 3.5-1 4-2.5"/>'],
+  github:['github code repository','<path d="M9 19c-4.5 1.4-4.5-2.5-6.5-3M15 21.5v-3.5a3 3 0 0 0-.9-2.4c2.9-.3 6-1.4 6-6.5a5 5 0 0 0-1.4-3.5 4.7 4.7 0 0 0-.1-3.5s-1.1-.3-3.6 1.4a12.3 12.3 0 0 0-6.4 0C6.2 1.8 5 2.1 5 2.1a4.7 4.7 0 0 0-.1 3.5 5 5 0 0 0-1.4 3.5c0 5 3.1 6.2 6 6.5a3 3 0 0 0-.9 2.4v3.5"/>'],
+  menu:['menu hamburger','<path d="M4 7h16M4 12h16M4 17h16"/>'],
+  more:['meer opties','<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/>'],
+  chevronright:['pijl rechts verder','<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>'],
+  chevronleft:['pijl links terug','<path d="m14.5 5.5-6.5 6.5 6.5 6.5"/>'],
+  chevrondown:['pijl omlaag','<path d="m5.5 9.5 6.5 6.5 6.5-6.5"/>'],
+  chevronup:['pijl omhoog','<path d="m5.5 14.5 6.5-6.5 6.5 6.5"/>'],
+  filter:['filter trechter','<path d="M3.5 5h17l-6.5 8v6l-4 2v-8z"/>'],
+  eye:['oog bekijk zichtbaar','<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'],
+  monitor:['scherm computer beeldscherm','<rect x="3" y="4" width="18" height="12.5" rx="2"/><path d="M8.5 20.5h7M12 16.5v4"/>'],
+  euro:['euro geld financien','<path d="M17.5 6.5A6.5 6.5 0 1 0 17.5 17.5"/><path d="M4 10h9M4 14h9"/>'],
+  ticket:['ticket kaartje voorstelling','<path d="M3.5 7.5h17v3a1.5 1.5 0 0 0 0 3v3h-17v-3a1.5 1.5 0 0 0 0-3z"/><path d="M14 7.5v9" stroke-dasharray="2 2"/>'],
+  masks:['theater toneel cultuur','<path d="M3 4.5c3 1.2 6 1.2 9 0v6.5a4.5 4.5 0 0 1-9 0z"/><path d="M12 9c3 1.2 6 1.2 9 0v6.5a4.5 4.5 0 0 1-9 0"/><path d="M5.5 9h1M8.5 9h1M15 13.5c.8.8 2.2.8 3 0"/>'],
+  home2:['woning gebouw','<path d="M3.5 20.5h17M5.5 20.5V9l6.5-5 6.5 5v11.5"/><path d="M10 20.5v-5h4v5"/>'],
+  gift:['cadeau geschenk','<rect x="3.5" y="8" width="17" height="4.5" rx="1"/><path d="M5 12.5v8h14v-8M12 8v12.5"/><path d="M12 8C9 8 7.5 4 10 4c1.5 0 2 2 2 4 0-2 .5-4 2-4 2.5 0 1 4-2 4"/>'],
+  hash:['hashtag social','<path d="M5 9h14.5M4.5 15H19M10 3.5 8 20.5M16 3.5l-2 17"/>'],
+  share:['delen','<circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="m8.2 10.8 7.6-4.1M8.2 13.2l7.6 4.1"/>'],
+  info:['info informatie','<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.1"/>'],
+  alert:['waarschuwing let op','<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.2v.1"/>'],
+  power:['aan uit','<path d="M12 3v8.5"/><path d="M6.6 6.5a7.5 7.5 0 1 0 10.8 0"/>'],
+  keyboard:['toetsenbord typen toetsen','<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.1M9.5 10h.1M13 10h.1M16.5 10h.1M6 14h.1M17.5 14h.1M9 14h6"/>'],
+  wand:['magie automatisch actie','<path d="m4 20 11.5-11.5M14 4.5V2.5M18.5 9h2M17.5 5.5 19 4M13.5 9.5l1 1"/><path d="m15.5 8.5-1-1"/>'],
+  box:['vak kader groep','<rect x="3.5" y="3.5" width="17" height="17" rx="4" stroke-dasharray="3 2.4"/>'],
+  grip:['greep verplaats','<circle cx="9" cy="6" r="1.2"/><circle cx="15" cy="6" r="1.2"/><circle cx="9" cy="12" r="1.2"/><circle cx="15" cy="12" r="1.2"/><circle cx="9" cy="18" r="1.2"/><circle cx="15" cy="18" r="1.2"/>'],
+  move:['verplaats','<path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/>'],
+  bolt2:['update upgrade nieuw','<path d="M12 20V8"/><path d="m6.5 13.5 5.5-5.5 5.5 5.5"/><path d="M5 4h14"/>'],
+  undo:['ongedaan maken terug','<path d="M8 5 3.5 9.5 8 14"/><path d="M3.5 9.5H15a5.5 5.5 0 0 1 0 11h-3"/>'],
+  bold:['vet','<path d="M7 4.5h6a3.5 3.5 0 0 1 0 7H7zM7 11.5h7a4 4 0 0 1 0 8H7z"/>'],
+  italic:['cursief','<path d="M10.5 4.5h7M6.5 19.5h7M14.5 4.5l-5 15"/>'],
+  underline:['onderstreep','<path d="M7 4v7a5 5 0 0 0 10 0V4M5 20.5h14"/>'],
+  heading:['kop koptekst','<path d="M6 4.5v15M18 4.5v15M6 12h12"/>'],
+  listol:['genummerde lijst','<path d="M10 6.5h10M10 12h10M10 17.5h10M4 5l1.5-.5v4M4 8.5h3M4 14.5c0-1 2.5-1.5 2.5 0S4 16.5 4 18.5h3"/>'],
+  highlight:['markeer markeerstift','<path d="m9 15 7.5-7.5-3-3L6 12z"/><path d="M6 12 4 17.5l5-2.5M4 21h9"/>'],
+  eraser:['wis opmaak','<path d="M7.5 19.5 3.5 15.5a2 2 0 0 1 0-2.8L12 4.2a2 2 0 0 1 2.8 0l4.9 4.9a2 2 0 0 1 0 2.8L11.5 20h8"/>'],
+};
+function icon(name, size){
+  const d = ICONS[name] || ICONS.globe;
+  return `<svg class="ic" viewBox="0 0 24 24" width="${size||18}" height="${size||18}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d[1]}</svg>`;
+}
+
+/* ==========================================================================
+   Streamline — kern
+   Alles wat je maakt blijft lokaal: in je eigen instellingenbestand (map op je
+   computer) en als reservekopie in de browser. De enige verbindingen naar buiten
+   zijn: GitHub (alleen om updates/widgets op te halen, er gaat niets heen),
+   radiostreams, en websites/favicons die je zelf in een knop zet.
+   ========================================================================== */
+const APP_VERSION = '1.0.1';
+const DEFAULT_REPO = 'MehMienLepke/streamline';
+const SCHEMA = 1;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const clone = o => JSON.parse(JSON.stringify(o));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  let value;
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'html') el.innerHTML = v;
+    else if (k === 'value') value = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (typeof v !== 'string' && typeof v !== 'number' && k in el) el[k] = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat(9)) {
+    if (c == null || c === false) continue;
+    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  if (value !== undefined) el.value = value;
+  return el;
+}
+const ib = (name, title, on, cls) => h('button', { class: cls || 'iconbtn', title, 'aria-label': title, html: icon(name, 16), onclick: on });
+
+function toast(msg, ms = 2600) {
+  const t = h('div', { class: 'toast' }, msg);
+  $('#toasts').append(t);
+  setTimeout(() => t.remove(), ms);
+}
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+/* ---------- modals, dialogen, popovers ---------- */
+const modalStack = [];
+function openModal({ title, body, foot, wide, onClose }) {
+  const root = h('div', { class: 'mroot show' });
+  const box = h('div', { class: 'modal' + (wide ? ' wide' : ''), role: 'dialog', 'aria-modal': 'true' });
+  const m = { el: box, root, close() { root.remove(); modalStack.splice(modalStack.indexOf(m), 1); onClose && onClose(); } };
+  box.append(
+    h('div', { class: 'modal-head' }, h('h3', {}, title), ib('x', 'Sluiten', () => m.close())),
+    h('div', { class: 'modal-body' }, body),
+    foot ? h('div', { class: 'modal-foot' }, foot) : null
+  );
+  root.addEventListener('pointerdown', e => { if (e.target === root) m.close(); });
+  root.append(box); document.body.append(root); modalStack.push(m);
+  setTimeout(() => { const f = box.querySelector('input:not([type=checkbox]):not([type=color]),textarea'); f && f.focus(); }, 30);
+  return m;
+}
+function ask(title, label, value = '', placeholder = '') {
+  return new Promise(res => {
+    const inp = h('input', { class: 'inp', value, placeholder });
+    let done = false;
+    const ok = () => { done = true; m.close(); res(inp.value.trim()); };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+    const m = openModal({ title, body: h('div', { class: 'field' }, h('label', {}, label), inp),
+      foot: [h('button', { class: 'btn', onclick: () => m.close() }, 'Annuleren'), h('button', { class: 'btn primary', onclick: ok }, 'OK')],
+      onClose: () => { if (!done) res(null); } });
+  });
+}
+function confirmDlg(title, text, okLabel = 'Ja', danger) {
+  return new Promise(res => {
+    let done = false;
+    const m = openModal({ title, body: h('p', { style: { margin: '0 0 6px' } }, text),
+      foot: [h('button', { class: 'btn', onclick: () => m.close() }, 'Annuleren'),
+        h('button', { class: 'btn primary' + (danger ? ' danger' : ''), style: danger ? { background: 'var(--hi)', color: '#fff' } : null, onclick: () => { done = true; m.close(); res(true); } }, okLabel)],
+      onClose: () => { if (!done) res(false); } });
+  });
+}
+let openPop = null;
+function popover(anchor, content) {
+  closePop();
+  const p = h('div', { class: 'pop' }, content);
+  document.body.append(p);
+  const r = anchor.getBoundingClientRect(), pr = p.getBoundingClientRect();
+  p.style.left = clamp(r.right - pr.width, 8, innerWidth - pr.width - 8) + 'px';
+  p.style.top = (r.bottom + 6 + pr.height > innerHeight ? r.top - pr.height - 6 : r.bottom + 6) + 'px';
+  openPop = p;
+  setTimeout(() => document.addEventListener('pointerdown', popAway, true), 0);
+  return p;
+}
+function popAway(e) { if (openPop && !openPop.contains(e.target)) closePop(); }
+function closePop() { if (openPop) { openPop.remove(); openPop = null; document.removeEventListener('pointerdown', popAway, true); } }
+
+/* ---------- thema's & lettertypes ---------- */
+const THEMES = {
+  licht:   { name: 'Licht',   bg: '#ECEBE7', surface: '#FFFFFF', surface2: '#F5F4F0', ink: '#171816', muted: '#73766F', line: '#E3E1DB', accent: '#2E5E4E', accentInk: '#FFFFFF', accentSoft: '#E3ECE7', dark: false },
+  donker:  { name: 'Donker',  bg: '#0F1110', surface: '#181B19', surface2: '#212522', ink: '#ECEEE9', muted: '#8D938C', line: '#2B302C', accent: '#9CC3AE', accentInk: '#0F1110', accentSoft: '#1F2D26', dark: true },
+  zand:    { name: 'Zand',    bg: '#EEE8DE', surface: '#FBF8F2', surface2: '#F3EEE5', ink: '#2A2119', muted: '#857A6C', line: '#E3DBCD', accent: '#A4532C', accentInk: '#FFF8F0', accentSoft: '#F3E1D5', dark: false },
+  grafiet: { name: 'Grafiet', bg: '#E7E7E5', surface: '#FAFAF9', surface2: '#F0F0EE', ink: '#111111', muted: '#6E6E6B', line: '#DCDCD9', accent: '#111111', accentInk: '#FAFAF9', accentSoft: '#E4E4E1', dark: false },
+  diepzee: { name: 'Diepzee', bg: '#0C1316', surface: '#131C20', surface2: '#1A252A', ink: '#E6EEF0', muted: '#86979C', line: '#24323A', accent: '#74B9C6', accentInk: '#0C1316', accentSoft: '#17323A', dark: true },
+  mosterd: { name: 'Mosterd', bg: '#131210', surface: '#1C1B18', surface2: '#25231F', ink: '#F0ECE2', muted: '#9A9385', line: '#302D27', accent: '#D9A93D', accentInk: '#131210', accentSoft: '#3A3020', dark: true },
+};
+const THEME_KEYS = [['bg', 'Achtergrond'], ['surface', 'Vlakken'], ['surface2', 'Vlakken (zacht)'], ['ink', 'Tekst'], ['muted', 'Tekst (rustig)'], ['line', 'Lijnen'], ['accent', 'Accent'], ['accentInk', 'Tekst op accent'], ['accentSoft', 'Accent (zacht)']];
+const FONTS = {
+  'Bahnschrift (strak)': 'Bahnschrift,"Segoe UI",sans-serif',
+  'Segoe UI': '"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif',
+  'Aptos': 'Aptos,"Segoe UI",sans-serif',
+  'Georgia (klassiek)': 'Georgia,"Times New Roman",serif',
+  'Sitka (elegant)': '"Sitka Heading","Sitka Text",Georgia,serif',
+  'Cambria': 'Cambria,Georgia,serif',
+  'Candara (zacht)': 'Candara,"Segoe UI",sans-serif',
+  'Corbel': 'Corbel,"Segoe UI",sans-serif',
+  'Trebuchet': '"Trebuchet MS",sans-serif',
+  'Consolas (mono)': 'Consolas,"Cascadia Mono",monospace',
+  'Impact (krachtig)': 'Impact,"Arial Black",sans-serif',
+};
+function activeTheme() {
+  const t = S.theme;
+  if (t.auto) return THEMES[matchMedia('(prefers-color-scheme: dark)').matches ? 'donker' : 'licht'];
+  if (t.preset === 'eigen') return { ...THEMES.licht, ...t.custom };
+  return THEMES[t.preset] || THEMES.licht;
+}
+function applyTheme() {
+  const t = activeTheme(), r = document.documentElement.style;
+  const map = { bg: '--bg', surface: '--surface', surface2: '--surface-2', ink: '--ink', muted: '--muted', line: '--line', accent: '--accent', accentInk: '--accent-ink', accentSoft: '--accent-soft' };
+  for (const k in map) r.setProperty(map[k], t[k]);
+  r.setProperty('color-scheme', t.dark ? 'dark' : 'light');
+  r.setProperty('--r', (S.theme.radius ?? 22) + 'px');
+  r.setProperty('--r-sm', Math.round((S.theme.radius ?? 22) * 0.6) + 'px');
+  const ty = S.typography;
+  r.setProperty('--title-font', FONTS[ty.font] || FONTS['Bahnschrift (strak)']);
+  r.setProperty('--title-color', ty.color || 'var(--ink)');
+  r.setProperty('--title-weight', ty.weight || 600);
+  try { localStorage.setItem('streamline.theme', JSON.stringify({ t, radius: S.theme.radius })); } catch (e) {}
+  if (editing) setGridImage();
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => S && S.theme.auto && applyTheme());
+
+/* ---------- opslag: map op je computer + browser-reserve ---------- */
+const IDB = {
+  db: null,
+  async open() {
+    if (this.db) return this.db;
+    this.db = await new Promise((res, rej) => {
+      const r = indexedDB.open('streamline', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('kv');
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+    return this.db;
+  },
+  async get(k) { try { const db = await this.open(); return await new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); } catch (e) { return undefined; } },
+  async set(k, v) { try { const db = await this.open(); await new Promise(res => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = res; tx.onerror = res; }); } catch (e) {} },
+};
+const FS = { supported: 'showDirectoryPicker' in window, dir: null, perm: false, file: null };
+const EXT = '.streamline.json';
+
+async function pickDir() {
+  const dir = await window.showDirectoryPicker({ id: 'streamline', mode: 'readwrite' });
+  FS.dir = dir; FS.perm = true; await IDB.set('dir', dir);
+  return dir;
+}
+async function listFiles() {
+  const out = [];
+  if (!FS.dir || !FS.perm) return out;
+  for await (const [name, hd] of FS.dir.entries()) if (hd.kind === 'file' && name.toLowerCase().endsWith(EXT)) out.push(name);
+  return out.sort((a, b) => a.localeCompare(b));
+}
+async function getHandle(path, create) {
+  const parts = path.split('/'); let d = FS.dir;
+  for (const p of parts.slice(0, -1)) d = await d.getDirectoryHandle(p, { create });
+  return d.getFileHandle(parts.at(-1), { create });
+}
+async function readText(path) { const f = await (await getHandle(path)).getFile(); return f.text(); }
+async function writeText(path, text) { const w = await (await getHandle(path, true)).createWritable(); await w.write(text); await w.close(); }
+async function readJSON(name) { return JSON.parse(await readText(name)); }
+async function writeJSON(name, obj) { await writeText(name, JSON.stringify(obj, null, 2)); }
+async function exists(path) { try { await getHandle(path); return true; } catch (e) { return false; } }
+function slug(s) { return (s || 'dashboard').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'dashboard'; }
+async function freeFileName(title) {
+  const files = await listFiles(); let base = slug(title), n = base, i = 2;
+  while (files.includes(n + EXT)) n = base + '-' + i++;
+  return n + EXT;
+}
+function download(name, data, type) {
+  const blob = data instanceof Blob ? data : new Blob([data], { type: type || 'application/octet-stream' });
+  const a = h('a', { href: URL.createObjectURL(blob), download: name });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+let S = null; // de huidige instellingen
+let saveTimer = null;
+function cacheLocal() { try { localStorage.setItem('streamline.cache', JSON.stringify({ file: FS.file, state: S })); } catch (e) { console.warn('cache', e); } }
+function save() {
+  if (!S) return;
+  S.meta.updated = Date.now();
+  cacheLocal();
+  $('#savedot') && $('#savedot').classList.add('busy');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flush, 450);
+}
+async function flush() {
+  clearTimeout(saveTimer);
+  if (FS.dir && FS.perm && FS.file) {
+    try { await writeJSON(FS.file, S); } catch (e) { toast('Opslaan in je map mislukt: ' + e.message, 5000); }
+  }
+  $('#savedot') && $('#savedot').classList.remove('busy');
+}
+window.addEventListener('beforeunload', () => { cacheLocal(); });
+
+/* ---------- standaardinstellingen & migratie ---------- */
+function mk(type, x, y, w, hgt, config = {}, data = {}) {
+  const def = WIDGETS[type];
+  return { id: uid(), type, x, y, w, h: hgt, locked: false, config: { ...clone(def?.defaults || {}), ...config }, data };
+}
+function defaultState(title, preset = 'licht') {
+  const home = { id: uid(), name: 'Start', icon: 'home', items: [] };
+  const work = { id: uid(), name: 'Werk', icon: 'briefcase', items: [] };
+  const s = {
+    app: 'streamline', schema: SCHEMA,
+    meta: { title: title || 'Mijn dashboard', created: Date.now(), updated: Date.now(), appVersion: APP_VERSION },
+    theme: { preset, auto: false, radius: 22, custom: { ...THEMES[preset] || THEMES.licht } },
+    typography: { font: 'Bahnschrift (strak)', color: '', weight: 600 },
+    grid: { cols: 24, rowH: 36, gap: 14 },
+    ui: { panels: {} },
+    pages: [home, work], global: [], activePage: home.id,
+    update: { repo: DEFAULT_REPO, branch: 'main', notify: 'major', htmlName: 'streamline.html' },
+    plugins: [],
+  };
+  s.global.push(mk('nav', 0, 0, 7, 2, { orientation: 'h', display: 'both' }));
+  home.items.push(
+    mk('title', 0, 3, 12, 2, { text: '{groet}', size: 4 }),
+    mk('link', 0, 5, 3, 3, { label: 'Agenda', url: 'https://outlook.office.com/calendar', iconMode: 'icon', icon: 'calendar' }),
+    mk('link', 3, 5, 3, 3, { label: 'Mail', url: 'https://outlook.office.com/mail', iconMode: 'icon', icon: 'mail', style: 'accent' }),
+    mk('link', 6, 5, 3, 3, { label: 'GitHub', url: 'https://github.com', iconMode: 'icon', icon: 'github' }),
+    mk('radio', 9, 5, 6, 3),
+    mk('todo', 0, 8, 8, 9),
+    mk('notes', 8, 8, 7, 9),
+  );
+  work.items.push(mk('title', 0, 3, 10, 2, { text: 'Werk', size: 3 }), mk('crop', 0, 5, 14, 12));
+  return s;
+}
+function migrate(s) {
+  const d = defaultState(s?.meta?.title);
+  if (!s || typeof s !== 'object') return d;
+  const out = { ...d, ...s };
+  out.meta = { ...d.meta, ...s.meta };
+  out.theme = { ...d.theme, ...s.theme, custom: { ...d.theme.custom, ...(s.theme?.custom || {}) } };
+  out.typography = { ...d.typography, ...s.typography };
+  out.grid = { ...d.grid, ...s.grid };
+  out.ui = { ...d.ui, ...s.ui, panels: { ...(s.ui?.panels || {}) } };
+  out.update = { ...d.update, ...s.update };
+  if (!out.update.repo) out.update.repo = DEFAULT_REPO;
+  out.pages = Array.isArray(s.pages) && s.pages.length ? s.pages : d.pages;
+  out.global = Array.isArray(s.global) ? s.global : d.global;
+  out.plugins = Array.isArray(s.plugins) ? s.plugins : [];
+  for (const it of allItems(out)) { it.config = { ...clone(WIDGETS[it.type]?.defaults || {}), ...(it.config || {}) }; it.data = it.data || {}; }
+  if (!out.pages.find(p => p.id === out.activePage)) out.activePage = out.pages[0].id;
+  out.schema = SCHEMA; out.meta.appVersion = APP_VERSION;
+  return out;
+}
+function allItems(s = S) { return [...s.global, ...s.pages.flatMap(p => p.items)]; }
+function findItem(id) {
+  let it = S.global.find(i => i.id === id); if (it) return { item: it, list: S.global };
+  for (const p of S.pages) { it = p.items.find(i => i.id === id); if (it) return { item: it, list: p.items, page: p }; }
+  return {};
+}
+function currentPage() { return S.pages.find(p => p.id === S.activePage) || S.pages[0]; }
+function fmtVars(t) {
+  const d = new Date(), hr = d.getHours();
+  return String(t || '')
+    .replace(/\{groet\}/gi, hr < 6 ? 'Goedenacht' : hr < 12 ? 'Goedemorgen' : hr < 18 ? 'Goedemiddag' : 'Goedenavond')
+    .replace(/\{datum\}/gi, d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }))
+    .replace(/\{tijd\}/gi, d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }));
+}
+
+/* ---------- widget-register (ook voor uitbreidingen via GitHub) ---------- */
+const WIDGETS = {};
+let booted = false;
+const Streamline = {
+  version: APP_VERSION,
+  registerWidget(def) {
+    if (!def || !def.type || !def.render) return console.warn('Ongeldige widget', def);
+    def.group = def.group || 'uitbreiding';
+    WIDGETS[def.type] = def;
+    if (booted) { renderAll(); renderRepo(); }
+  },
+  h, icon, toast, openModal, ask, confirmDlg, popover, closePop, save: () => save(), fmtVars, download,
+};
+window.Streamline = Streamline;
+
+/* ---------- weergave ---------- */
+const els = new Map();
+let editing = false;
+let geo = { cw: 40, rh: 36, gap: 14 };
+const canvas = () => $('#canvas');
+
+function renderTop() {
+  $('#brandsub').textContent = S.meta.title;
+  document.title = 'Streamline — ' + S.meta.title;
+}
+function renderAll() {
+  for (const [id] of els) destroyItem(id);
+  canvas().innerHTML = ''; els.clear();
+  for (const it of [...S.global, ...currentPage().items]) mountItem(it);
+  layout(); renderTop();
+}
+function destroyItem(id) { const { item } = findItem(id); const def = item && WIDGETS[item.type]; try { def?.destroy?.(item); } catch (e) {} els.get(id)?.remove(); }
+function mountItem(item) {
+  const el = h('div', { class: 'item t-' + item.type, 'data-id': item.id });
+  els.set(item.id, el); canvas().append(el);
+  buildItem(item);
+  return el;
+}
+function ctxFor(item) {
+  return {
+    item, config: item.config, data: item.data, editing,
+    save: () => save(),
+    rerender: () => buildItem(item),
+    remind: (anchor, cur, cb) => remindPicker(anchor, cur, cb),
+  };
+}
+function buildItem(item) {
+  const el = els.get(item.id); if (!el) return;
+  const def = WIDGETS[item.type];
+  el.innerHTML = '';
+  el.className = 'item t-' + item.type + (item.locked ? ' locked' : '');
+  let host;
+  if (!def) {
+    host = h('div', { class: 'card' }, h('div', { class: 'missing', html: icon('alert', 26) + `<b>Widget “${esc(item.type)}” is niet beschikbaar</b><span>Installeer hem via Instellingen → Uitbreidingen. Je inhoud blijft bewaard.</span>` }));
+    el.append(host);
+  } else if (def.card === false) {
+    host = h('div', { class: 'card flat' }); el.append(host);
+    try { def.render(host, ctxFor(item)); } catch (e) { host.textContent = 'Fout in widget: ' + e.message; console.error(e); }
+  } else {
+    host = h('div', { class: 'card' });
+    if (item.config.title && item.config.showHead !== false) host.append(h('div', { class: 'card-head', html: (def.icon ? icon(def.icon, 17) : '') + esc(fmtVars(item.config.title)) }));
+    const body = h('div', { class: 'card-body' }); host.append(body); el.append(host);
+    try { def.render(body, ctxFor(item)); } catch (e) { body.textContent = 'Fout in widget: ' + e.message; console.error(e); }
+  }
+  el.append(h('div', { class: 'chrome' },
+    h('div', { class: 'shield' }),
+    h('div', { class: 'grip', title: item.locked ? 'Vergrendeld' : 'Sleep om te verplaatsen' }, h('span')),
+    h('div', { class: 'tools' },
+      h('button', { class: 'nl', title: 'Instellingen van dit onderdeel', 'data-act': 'config', html: icon('settings', 15) }),
+      h('button', { class: 'nl', title: 'Kopiëren', 'data-act': 'copy', html: icon('copy', 15) }),
+      h('button', { class: 'nl', title: 'Verwijderen', 'data-act': 'delete', html: icon('trash', 15) }),
+      h('button', { class: item.locked ? 'lock-on' : '', title: item.locked ? 'Ontgrendelen' : 'Op slot zetten', 'data-act': 'lock', html: icon(item.locked ? 'lock' : 'unlock', 15) })),
+    h('div', { class: 'resize', title: 'Sleep om de grootte te wijzigen' }),
+    h('div', { class: 'size-badge' })));
+}
+function computeGeo() {
+  const g = S.grid, W = canvas().clientWidth;
+  geo = { gap: g.gap, rh: g.rowH, cw: (W - g.gap * (g.cols - 1)) / g.cols };
+}
+function rectOf(it) {
+  const { cw, rh, gap } = geo;
+  return { left: it.x * (cw + gap), top: it.y * (rh + gap), width: it.w * cw + (it.w - 1) * gap, height: it.h * rh + (it.h - 1) * gap };
+}
+function layout() {
+  if (!S) return;
+  computeGeo();
+  let bottom = 0;
+  for (const it of [...S.global, ...currentPage().items]) {
+    const el = els.get(it.id); if (!el) continue;
+    it.w = clamp(it.w, 1, S.grid.cols); it.x = clamp(it.x, 0, S.grid.cols - it.w);
+    const r = rectOf(it);
+    Object.assign(el.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+    bottom = Math.max(bottom, it.y + it.h);
+  }
+  const rows = bottom + (editing ? 8 : 1);
+  canvas().style.height = (rows * (geo.rh + geo.gap)) + 'px';
+  if (editing) setGridImage();
+}
+function setGridImage() {
+  const cs = getComputedStyle(document.documentElement);
+  const acc = cs.getPropertyValue('--accent').trim(), line = cs.getPropertyValue('--muted').trim();
+  const { cw, rh, gap } = geo, W = cw + gap, H = rh + gap;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}'><rect x='.75' y='.75' width='${Math.max(1, cw - 1.5)}' height='${rh - 1.5}' rx='8' fill='${acc}' fill-opacity='.06' stroke='${line}' stroke-opacity='.28' stroke-dasharray='3 3'/></svg>`;
+  canvas().style.setProperty('--gridimg', `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
+  canvas().style.backgroundSize = `${W}px ${H}px`;
+}
+window.addEventListener('resize', debounce(layout, 60));
+
+function goPage(id) {
+  if (!S.pages.find(p => p.id === id)) return;
+  S.activePage = id; save(); renderAll();
+}
+
+/* ---------- bewerkmodus ---------- */
+function setEditing(on) {
+  editing = on;
+  document.body.classList.toggle('editing', on);
+  $('#gear').classList.toggle('on', on);
+  showPanel('repo', on);
+  if (!on) { showPanel('settings', false); hist.length = 0; }
+  for (const it of [...S.global, ...currentPage().items]) if (WIDGETS[it.type]?.rebuildOnEdit) buildItem(it);
+  layout();
+}
+const hist = [];
+function pushHistory() { hist.push(JSON.stringify({ pages: S.pages, global: S.global })); if (hist.length > 60) hist.shift(); }
+function undo() {
+  const last = hist.pop(); if (!last) return toast('Niets om ongedaan te maken');
+  const o = JSON.parse(last); S.pages = o.pages; S.global = o.global; save(); renderAll(); toast('Ongedaan gemaakt');
+}
+
+function initDrag() {
+  const cv = canvas();
+  cv.addEventListener('click', e => {
+    const b = e.target.closest('.tools button'); if (!b || !editing) return;
+    const id = b.closest('.item').dataset.id; const { item } = findItem(id); if (!item) return;
+    const act = b.dataset.act;
+    if (act === 'lock') { pushHistory(); item.locked = !item.locked; buildItem(item); save(); toast(item.locked ? 'Op slot gezet' : 'Ontgrendeld'); }
+    if (act === 'config') openItemConfig(item);
+    if (act === 'copy') duplicateItem(item);
+    if (act === 'delete') deleteItem(item);
+  });
+  cv.addEventListener('pointerdown', e => {
+    if (!editing || e.button !== 0) return;
+    const itemEl = e.target.closest('.item'); if (!itemEl || e.target.closest('.tools')) return;
+    const resize = !!e.target.closest('.resize');
+    if (!resize && !e.target.closest('.shield,.grip')) return;
+    const { item } = findItem(itemEl.dataset.id); if (!item) return;
+    if (item.locked) { toast('Dit onderdeel staat op slot — klik op het slotje om het te ontgrendelen'); return; }
+    e.preventDefault();
+    pushHistory();
+    const sx = e.clientX, sy = e.clientY, o = { x: item.x, y: item.y, w: item.w, h: item.h };
+    const def = WIDGETS[item.type] || {}; const min = def.min || { w: 1, h: 1 }; const max = def.max || { w: S.grid.cols, h: 60 };
+    const badge = itemEl.querySelector('.size-badge');
+    itemEl.classList.add(resize ? 'resizing' : 'dragging');
+    itemEl.setPointerCapture(e.pointerId);
+    let moved = false;
+    const move = ev => {
+      const dx = (ev.clientX - sx) / (geo.cw + geo.gap), dy = (ev.clientY - sy) / (geo.rh + geo.gap);
+      if (resize) {
+        item.w = clamp(Math.round(o.w + dx), min.w, Math.min(max.w, S.grid.cols - item.x));
+        item.h = clamp(Math.round(o.h + dy), min.h, max.h);
+        badge.textContent = `${item.w} × ${item.h}`;
+      } else {
+        item.x = clamp(Math.round(o.x + dx), 0, S.grid.cols - item.w);
+        item.y = Math.max(0, Math.round(o.y + dy));
+        badge.textContent = `kolom ${item.x + 1} · rij ${item.y + 1}`;
+      }
+      moved = true; layout();
+    };
+    const up = () => {
+      itemEl.classList.remove('resizing', 'dragging');
+      itemEl.removeEventListener('pointermove', move); itemEl.removeEventListener('pointerup', up); itemEl.removeEventListener('pointercancel', up);
+      if (moved) { save(); if (resize && WIDGETS[item.type]?.rebuildOnResize) buildItem(item); } else hist.pop();
+      layout();
+    };
+    itemEl.addEventListener('pointermove', move); itemEl.addEventListener('pointerup', up); itemEl.addEventListener('pointercancel', up);
+  });
+  cv.addEventListener('dblclick', e => {
+    if (!editing) return; const itemEl = e.target.closest('.item'); if (!itemEl) return;
+    const { item } = findItem(itemEl.dataset.id); if (item && !item.locked) openItemConfig(item);
+  });
+}
+function overlaps(a, b) { return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h; }
+function freeSpot(w, hgt, ignoreBoxes = true) {
+  const others = [...S.global, ...currentPage().items].filter(i => !(ignoreBoxes && i.type === 'box'));
+  for (let y = 0; y < 400; y++) for (let x = 0; x <= S.grid.cols - w; x++) {
+    const r = { x, y, w, h: hgt };
+    if (!others.some(o => overlaps(r, o))) return { x, y };
+  }
+  return { x: 0, y: pageBottom() };
+}
+function pageBottom(items = [...S.global, ...currentPage().items]) { return items.reduce((m, i) => Math.max(m, i.y + i.h), 0); }
+function addItem(type, cfg) {
+  const def = WIDGETS[type]; if (!def) return;
+  pushHistory();
+  const size = def.size || { w: 4, h: 4 };
+  const spot = freeSpot(size.w, size.h, type !== 'box');
+  const it = mk(type, spot.x, spot.y, size.w, size.h, cfg);
+  (def.global ? S.global : currentPage().items).push(it);
+  mountItem(it); layout(); save();
+  const el = els.get(it.id); el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.animate([{ transform: 'scale(.94)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 260, easing: 'ease-out' });
+  if (def.configOnAdd) setTimeout(() => openItemConfig(it), 280);
+  return it;
+}
+function inside(child, box) { return child.id !== box.id && child.x >= box.x && child.y >= box.y && child.x + child.w <= box.x + box.w && child.y + child.h <= box.y + box.h; }
+function duplicateItem(item) {
+  pushHistory();
+  const { list } = findItem(item.id);
+  if (item.type === 'box') {
+    const kids = list.filter(i => inside(i, item));
+    const dy = pageBottom() + 1 - item.y;
+    for (const src of [item, ...kids]) { const c = clone(src); c.id = uid(); c.y += dy; c.locked = false; list.push(c); mountItem(c); }
+    toast(`Vak gekopieerd met ${kids.length} onderdelen erin`);
+  } else {
+    const c = clone(item); c.id = uid(); c.locked = false;
+    const right = { x: item.x + item.w, y: item.y, w: item.w, h: item.h };
+    const others = [...S.global, ...currentPage().items].filter(i => i.type !== 'box');
+    if (right.x + right.w <= S.grid.cols && !others.some(o => overlaps(right, o))) { c.x = right.x; }
+    else { const s = freeSpot(c.w, c.h); c.x = s.x; c.y = s.y; }
+    list.push(c); mountItem(c); toast('Gekopieerd');
+  }
+  layout(); save();
+}
+async function deleteItem(item) {
+  const name = WIDGETS[item.type]?.name || item.type;
+  if (!(await confirmDlg('Verwijderen?', `Wil je “${item.config.label || item.config.title || item.config.text || name}” verwijderen? Je kunt dit ongedaan maken met Ctrl+Z zolang je in de bewerkmodus bent.`, 'Verwijderen', true))) return;
+  pushHistory();
+  const { list } = findItem(item.id);
+  list.splice(list.indexOf(item), 1);
+  try { WIDGETS[item.type]?.onDelete?.(item); } catch (e) {}
+  destroyItem(item.id); els.delete(item.id); layout(); save();
+}
+
+/* ---------- zwevende panelen met greep ---------- */
+function showPanel(name, on) {
+  const p = $('#panel-' + name); if (!p) return;
+  p.classList.toggle('show', on);
+  if (on) {
+    if (name === 'repo') renderRepo();
+    if (name === 'settings') renderSettings();
+    const pos = S.ui.panels[name] || (name === 'repo' ? { x: innerWidth - 420, y: 96 } : { x: innerWidth - 880, y: 96 });
+    placePanel(p, pos.x, pos.y);
+  }
+}
+function placePanel(p, x, y) {
+  const r = p.getBoundingClientRect();
+  p.style.left = clamp(x, 8, innerWidth - Math.min(r.width || 380, innerWidth) - 8) + 'px';
+  p.style.top = clamp(y, 8, innerHeight - 80) + 'px';
+}
+function initPanels() {
+  for (const p of $$('.panel')) {
+    const grip = p.querySelector('.panel-grip');
+    grip.addEventListener('pointerdown', e => {
+      e.preventDefault(); grip.setPointerCapture(e.pointerId); grip.style.cursor = 'grabbing';
+      const r = p.getBoundingClientRect(), ox = e.clientX - r.left, oy = e.clientY - r.top;
+      const mv = ev => placePanel(p, ev.clientX - ox, ev.clientY - oy);
+      const up = () => {
+        grip.style.cursor = ''; grip.removeEventListener('pointermove', mv); grip.removeEventListener('pointerup', up);
+        S.ui.panels[p.dataset.name] = { x: parseInt(p.style.left), y: parseInt(p.style.top) }; save();
+      };
+      grip.addEventListener('pointermove', mv); grip.addEventListener('pointerup', up);
+    });
+  }
+}
+
+/* ---------- repository (widgets toevoegen) ---------- */
+const GROUPS = [['basis', 'Basis'], ['widgets', 'Widgets'], ['uitbreiding', 'Uitbreidingen']];
+let repoFilter = '';
+function renderRepo() {
+  const body = $('#repo-body'); if (!body) return;
+  body.innerHTML = '';
+  body.append(h('input', { class: 'inp', placeholder: 'Zoek een widget…', value: repoFilter, style: { marginBottom: '14px' },
+    oninput: e => { repoFilter = e.target.value; renderRepoList(list); } }));
+  const list = h('div'); body.append(list);
+  renderRepoList(list);
+  body.append(h('p', { class: 'hint', html: `Klik op een onderdeel om het toe te voegen. Sleep onderdelen aan hun <b>greep</b> en verander de grootte met het bolletje rechtsonder. <kbd>Ctrl</kbd>+<kbd>Z</kbd> maakt ongedaan, <kbd>Esc</kbd> sluit de bewerkmodus.` }));
+}
+function renderRepoList(list) {
+  list.innerHTML = '';
+  const q = repoFilter.toLowerCase();
+  for (const [g, label] of GROUPS) {
+    const defs = Object.values(WIDGETS).filter(d => d.group === g && !d.hidden && (!q || (d.name + ' ' + (d.desc || '')).toLowerCase().includes(q)));
+    if (!defs.length && g !== 'uitbreiding') continue;
+    const grp = h('div', { class: 'repo-group' }, h('h4', {}, label));
+    for (const d of defs) grp.append(h('button', { class: 'repo-item', onclick: () => addItem(d.type) },
+      h('span', { class: 'ri', html: icon(d.icon || 'grid', 20) }),
+      h('span', {}, h('b', {}, d.name), h('small', {}, d.desc || '')),
+      h('span', { class: 'add', html: icon('plus', 18) })));
+    if (g === 'uitbreiding') grp.append(h('button', { class: 'btn sm', onclick: () => { showPanel('settings', true); settingsTab = 'uitbr'; renderSettings(); } }, h('span', { html: icon('github', 15) }), 'Meer widgets van GitHub'));
+    list.append(grp);
+  }
+}
+
+/* ---------- configuratie per onderdeel ---------- */
+function fieldEl(f, cfg, onChange) {
+  const set = v => { cfg[f.key] = v; onChange && onChange(f.key, v); };
+  const wrap = h('div', { class: 'field' });
+  if (f.type !== 'checkbox') wrap.append(h('label', {}, f.label));
+  let ctl;
+  switch (f.type) {
+    case 'textarea': ctl = h('textarea', { class: 'inp', value: cfg[f.key] ?? '', placeholder: f.placeholder || '', oninput: e => set(e.target.value) }); break;
+    case 'number': ctl = h('input', { class: 'inp', type: 'number', min: f.min, max: f.max, step: f.step || 1, value: cfg[f.key] ?? '', oninput: e => set(Number(e.target.value)) }); break;
+    case 'select': ctl = h('select', { class: 'inp', value: String(cfg[f.key] ?? ''), onchange: e => set(isNaN(e.target.value) || e.target.value === '' ? e.target.value : Number(e.target.value)) }, f.options.map(([v, l]) => h('option', { value: String(v) }, l))); break;
+    case 'seg': {
+      ctl = h('div', { class: 'seg' });
+      const draw = () => { ctl.innerHTML = ''; for (const [v, l] of f.options) ctl.append(h('button', { type: 'button', class: cfg[f.key] === v ? 'on' : '', onclick: () => { set(v); draw(); } }, l)); };
+      draw(); break;
+    }
+    case 'checkbox': ctl = h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!cfg[f.key], onchange: e => set(e.target.checked) }), f.label); break;
+    case 'range': {
+      const out = h('span', { class: 'badge' }, (cfg[f.key] ?? 0) + (f.unit || ''));
+      ctl = h('div', { class: 'row' }, h('input', { type: 'range', min: f.min, max: f.max, step: f.step || 1, value: cfg[f.key] ?? 0, oninput: e => { set(Number(e.target.value)); out.textContent = e.target.value + (f.unit || ''); } }), out);
+      break;
+    }
+    case 'color': {
+      const inp = h('input', { type: 'color', value: cfg[f.key] || f.fallback || '#888888', oninput: e => { set(e.target.value); lab.textContent = e.target.value; } });
+      const lab = h('span', { class: 'hint', style: { margin: 0 } }, cfg[f.key] || 'themakleur');
+      ctl = h('div', { class: 'row' }, inp, lab, f.allowTheme ? h('button', { class: 'btn sm', type: 'button', onclick: () => { set(''); lab.textContent = 'themakleur'; } }, 'Thema') : null);
+      break;
+    }
+    case 'icon': {
+      const btn = h('button', { class: 'btn', type: 'button' });
+      const draw = () => { btn.innerHTML = icon(cfg[f.key] || 'globe', 18) + ' Kies icoon'; };
+      btn.onclick = () => iconPicker(cfg[f.key], v => { set(v); draw(); }); draw(); ctl = btn; break;
+    }
+    default: ctl = h('input', { class: 'inp', type: f.type === 'url' ? 'url' : 'text', value: cfg[f.key] ?? '', placeholder: f.placeholder || '', oninput: e => set(e.target.value) });
+  }
+  wrap.append(ctl);
+  if (f.hint) wrap.append(h('div', { class: 'hint', style: { margin: '2px 0 0' } }, f.hint));
+  if (f.showIf) { const upd = () => { wrap.style.display = f.showIf(cfg) ? '' : 'none'; }; upd(); wrap._upd = upd; }
+  return wrap;
+}
+function buildForm(fields, cfg) {
+  const box = h('div');
+  const refresh = () => $$('.field', box).forEach(w => w._upd && w._upd());
+  for (const f of fields) box.append(fieldEl(f, cfg, refresh));
+  return box;
+}
+function openItemConfig(item) {
+  const def = WIDGETS[item.type];
+  const cfg = clone(item.config);
+  const size = { w: item.w, h: item.h };
+  const body = h('div');
+  if (def?.fields?.length) body.append(buildForm(def.fields, cfg));
+  if (def?.editor) { const ed = h('div'); body.append(ed); def.editor(ed, cfg, item); }
+  const min = def?.min || { w: 1, h: 1 };
+  body.append(h('div', { class: 'sect', style: { marginTop: '10px' } }, h('h4', {}, 'Grootte (in rastervakjes)'),
+    h('div', { class: 'row' },
+      h('div', { class: 'field grow' }, h('label', {}, 'Breedte'), h('input', { class: 'inp', type: 'number', min: min.w, max: S.grid.cols, value: size.w, oninput: e => size.w = clamp(+e.target.value || 1, min.w, S.grid.cols) })),
+      h('div', { class: 'field grow' }, h('label', {}, 'Hoogte'), h('input', { class: 'inp', type: 'number', min: min.h, max: 60, value: size.h, oninput: e => size.h = clamp(+e.target.value || 1, min.h, 60) })))));
+  const isGlobal = S.global.includes(item);
+  let target = '';
+  if (!isGlobal) body.append(h('div', { class: 'sect' }, h('h4', {}, 'Naar een andere pagina'),
+    h('div', { class: 'row' }, h('select', { class: 'inp grow', onchange: e => target = e.target.value },
+      h('option', { value: '' }, '— niet verplaatsen —'), S.pages.filter(p => p.id !== S.activePage).map(p => [h('option', { value: 'move:' + p.id }, 'Verplaats naar ' + p.name), h('option', { value: 'copy:' + p.id }, 'Kopieer naar ' + p.name)])))));
+  const m = openModal({ title: (def?.name || item.type) + ' — instellingen', wide: def?.wideConfig, body,
+    foot: [h('button', { class: 'btn', onclick: () => m.close() }, 'Annuleren'),
+      h('button', { class: 'btn primary', onclick: () => {
+        pushHistory();
+        item.config = cfg; item.w = size.w; item.h = size.h;
+        if (target) {
+          const [act, pid] = target.split(':'); const page = S.pages.find(p => p.id === pid);
+          const c = clone(item); c.id = uid(); const s = { y: pageBottom(page.items) };
+          c.y = s.y; page.items.push(c);
+          if (act === 'move') { const { list } = findItem(item.id); list.splice(list.indexOf(item), 1); destroyItem(item.id); els.delete(item.id); }
+          toast(act === 'move' ? 'Verplaatst naar ' + page.name : 'Gekopieerd naar ' + page.name);
+        }
+        if (els.has(item.id)) buildItem(item);
+        layout(); save(); m.close();
+      } }, 'Opslaan')] });
+}
+
+/* ---------- icoon-catalogus ---------- */
+function iconPicker(current, cb) {
+  let q = '';
+  const grid = h('div', { class: 'icongrid' });
+  const draw = () => {
+    grid.innerHTML = '';
+    for (const [name, [kw]] of Object.entries(ICONS)) {
+      if (q && !(name + ' ' + kw).includes(q)) continue;
+      grid.append(h('button', { class: name === current ? 'on' : '', title: kw, html: icon(name, 22) + `<span>${name}</span>`, onclick: () => { cb(name); m.close(); } }));
+    }
+    if (!grid.children.length) grid.append(h('div', { class: 'empty' }, 'Niets gevonden — probeer een ander woord.'));
+  };
+  const m = openModal({ title: 'Kies een icoon', body: [h('input', { class: 'inp', placeholder: 'Zoek op Nederlands of Engels, bijv. “agenda” of “mail”…', style: { marginBottom: '12px' }, oninput: e => { q = e.target.value.toLowerCase().trim(); draw(); } }), grid] });
+  draw();
+}
+
+/* ---------- herinneringen (to do's en notities) ---------- */
+function remindPicker(anchor, current, cb) {
+  const at = ms => () => { closePop(); askNotify(); cb(Date.now() + ms); };
+  const tomorrow9 = () => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d.getTime(); };
+  const toLocal = ts => { const d = new Date(ts - new Date().getTimezoneOffset() * 6e4); return d.toISOString().slice(0, 16); };
+  const dt = h('input', { class: 'inp', type: 'datetime-local', value: toLocal(current || Date.now() + 36e5) });
+  popover(anchor, [
+    h('div', { class: 'lbl', style: { padding: '4px 10px 6px' } }, 'Herinner mij…'),
+    [['Over 15 minuten', 15], ['Over 30 minuten', 30], ['Over 1 uur', 60], ['Over 3 uur', 180]].map(([l, m]) => h('button', { class: 'opt', html: icon('clock', 15) + l, onclick: at(m * 6e4) })),
+    h('button', { class: 'opt', html: icon('sun', 15) + 'Morgen om 09:00', onclick: () => { closePop(); askNotify(); cb(tomorrow9()); } }),
+    h('hr'),
+    h('div', { style: { padding: '0 6px 6px' } }, dt, h('button', { class: 'btn primary sm', style: { marginTop: '6px', width: '100%' }, onclick: () => { const t = new Date(dt.value).getTime(); if (t) { closePop(); askNotify(); cb(t); } } }, 'Instellen')),
+    current ? h('button', { class: 'opt', html: icon('x', 15) + 'Herinnering verwijderen', onclick: () => { closePop(); cb(null); } }) : null,
+  ]);
+}
+function askNotify() { try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} }
+function fmtWhen(ts) {
+  const d = new Date(ts), now = new Date();
+  const same = d.toDateString() === now.toDateString();
+  const t = d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+  return same ? t : d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }) + ' ' + t;
+}
+let audioCtx = null;
+function beep() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const c = audioCtx, t0 = c.currentTime;
+    [0, .22, .44, 1.2, 1.42, 1.64].forEach((off, i) => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = i % 3 === 2 ? 1320 : 880;
+      g.gain.setValueAtTime(0, t0 + off); g.gain.linearRampToValueAtTime(.25, t0 + off + .02); g.gain.exponentialRampToValueAtTime(.001, t0 + off + .19);
+      o.connect(g).connect(c.destination); o.start(t0 + off); o.stop(t0 + off + .2);
+    });
+  } catch (e) {}
+}
+let titleFlash = null;
+function checkReminders() {
+  if (!S) return;
+  const now = Date.now();
+  for (const p of S.pages) for (const it of p.items) {
+    const entries = it.type === 'todo' ? (it.data.items || []).filter(t => !t.done) : it.type === 'notes' ? (it.data.notes || []) : [];
+    for (const en of entries) if (en.remindAt && !en.reminded && en.remindAt <= now) fireReminder(p, it, en);
+  }
+}
+function fireReminder(page, item, en) {
+  en.reminded = true; save();
+  const text = en.text || (h('div', { html: en.html || '' }).textContent || '').trim().slice(0, 140) || 'Notitie';
+  beep();
+  try { if ('Notification' in window && Notification.permission === 'granted') new Notification('Streamline — herinnering', { body: text, tag: en.id }); } catch (e) {}
+  let flip = false; clearInterval(titleFlash);
+  titleFlash = setInterval(() => { document.title = (flip = !flip) ? '🔔 ' + text : 'Streamline — ' + S.meta.title; }, 1000);
+  const box = h('div', { class: 'alarm', role: 'alert' });
+  const close = () => { box.remove(); clearInterval(titleFlash); document.title = 'Streamline — ' + S.meta.title; };
+  const refresh = () => { if (els.has(item.id)) buildItem(item); };
+  box.append(h('h4', { html: icon('bell', 18) + (item.type === 'todo' ? 'To-do herinnering' : 'Notitie herinnering') }), h('p', {}, text),
+    h('div', { class: 'row' },
+      item.type === 'todo' ? h('button', { class: 'btn primary sm', onclick: () => { en.done = true; save(); refresh(); close(); } }, h('span', { html: icon('check', 14) }), 'Gedaan') : null,
+      h('button', { class: 'btn sm', onclick: () => { en.remindAt = Date.now() + 10 * 6e4; en.reminded = false; save(); refresh(); close(); } }, 'Over 10 min'),
+      page.id !== S.activePage ? h('button', { class: 'btn sm', onclick: () => { goPage(page.id); close(); } }, 'Bekijk') : null,
+      h('button', { class: 'btn sm', onclick: () => { en.remindAt = null; save(); refresh(); close(); } }, 'Sluiten')));
+  document.body.append(box);
+  refresh();
+}
+
+/* ---------- updates & uitbreidingen via GitHub (alleen ophalen, nooit versturen) ---------- */
+const remote = { version: null, info: null, registry: null };
+const rawUrl = path => `https://raw.githubusercontent.com/${S.update.repo.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\/$/, '')}/${S.update.branch || 'main'}/${path}`;
+const verParts = v => String(v || '0').split('.').map(n => parseInt(n) || 0);
+function cmpVer(a, b) { const x = verParts(a), y = verParts(b); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; }
+async function checkUpdate(manual) {
+  if (!S.update.repo) { if (manual) toast('Vul eerst je GitHub-repository in'); return; }
+  try {
+    const r = await fetch(rawUrl('version.json') + '?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const v = await r.json(); remote.info = v; remote.version = v.version;
+    const newer = cmpVer(v.version, APP_VERSION) > 0;
+    const big = verParts(v.version)[0] > verParts(APP_VERSION)[0] || v.groot === true;
+    const show = newer && (S.update.notify === 'all' || (S.update.notify === 'major' && big));
+    $('#updatebtn').style.display = show ? 'inline-flex' : 'none';
+    if (manual) toast(newer ? `Versie ${v.version} is beschikbaar${big ? ' (grote update)' : ''}` : 'Je hebt de nieuwste versie');
+    if (manual && newer) $('#updatebtn').style.display = 'inline-flex';
+  } catch (e) { if (manual) toast('GitHub niet bereikbaar: ' + e.message, 4000); }
+}
+async function installUpdate() {
+  const v = remote.info; if (!v) return;
+  const name = S.update.htmlName || 'streamline.html';
+  const body = h('div', {},
+    h('p', {}, `Nieuwe versie: `, h('b', {}, v.version), ` (jij hebt ${APP_VERSION}).`),
+    v.notes ? h('div', { class: 'hint', style: { whiteSpace: 'pre-wrap' } }, v.notes) : null,
+    h('p', { class: 'hint' }, FS.dir && FS.perm
+      ? `Ik maak eerst een reservekopie van je huidige versie en je instellingen in de map “backups”. Daarna vervang ik “${name}” in je gekoppelde map en ververs ik de pagina. Je dashboards, notities en to do's blijven gewoon staan.`
+      : `Je map is niet gekoppeld, dus ik kan het bestand niet zelf vervangen. Ik download de nieuwe versie; zet die op de plek van je huidige “${name}” en open hem opnieuw.`));
+  const m = openModal({ title: 'Update installeren', body, foot: [h('button', { class: 'btn', onclick: () => m.close() }, 'Later'), h('button', { class: 'btn primary', onclick: async () => {
+    try {
+      const r = await fetch(rawUrl(v.file || 'streamline.html') + '?t=' + Date.now(), { cache: 'no-store' });
+      const html = await r.text();
+      if (!html.includes('name="streamline-app"')) throw new Error('Het gedownloade bestand is geen Streamline-pagina');
+      if (FS.dir && FS.perm) {
+        await flush();
+        const stamp = new Date().toISOString().slice(0, 10);
+        if (await exists(name)) await writeText(`backups/${name.replace(/\.html$/, '')}-v${APP_VERSION}.html`, await readText(name));
+        await writeJSON(`backups/${FS.file.replace(EXT, '')}-${stamp}${EXT}`, S);
+        await writeText(name, html);
+        toast('Update geïnstalleerd — de pagina wordt ververst');
+        setTimeout(() => location.reload(), 1200);
+      } else { download(name, html, 'text/html'); toast('Nieuwe versie gedownload'); }
+      m.close();
+    } catch (e) { toast('Update mislukt: ' + e.message, 5000); }
+  } }, 'Installeren')] });
+}
+async function loadPlugins() {
+  const store = (await IDB.get('plugins')) || {};
+  for (const p of Object.values(store)) await injectPlugin(p.code).catch(e => console.warn('plugin', p.id, e));
+}
+function injectPlugin(code) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+    const s = h('script', { src: url }); s.onload = () => { URL.revokeObjectURL(url); res(); }; s.onerror = rej;
+    document.head.append(s);
+  });
+}
+async function fetchRegistry() {
+  const r = await fetch(rawUrl('widgets/registry.json') + '?t=' + Date.now(), { cache: 'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  remote.registry = await r.json(); return remote.registry;
+}
+async function installPlugin(entry) {
+  const r = await fetch(rawUrl(entry.file) + '?t=' + Date.now(), { cache: 'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const code = await r.text();
+  const store = (await IDB.get('plugins')) || {};
+  store[entry.id] = { ...entry, code, installed: Date.now() };
+  await IDB.set('plugins', store);
+  if (FS.dir && FS.perm) await writeText('widgets/' + entry.id + '.js', code).catch(() => {});
+  if (!S.plugins.find(p => p.id === entry.id)) S.plugins.push({ id: entry.id, name: entry.name, version: entry.version });
+  else Object.assign(S.plugins.find(p => p.id === entry.id), { version: entry.version });
+  save();
+  await injectPlugin(code);
+}
+async function removePlugin(id) {
+  const store = (await IDB.get('plugins')) || {}; delete store[id]; await IDB.set('plugins', store);
+  S.plugins = S.plugins.filter(p => p.id !== id); save();
+  toast('Verwijderd — ververs de pagina om hem helemaal te ontladen');
+}
+
+/* ---------- opstarten ---------- */
+async function openFromDir(cached) {
+  const files = await listFiles();
+  let name = await IDB.get('lastFile');
+  if (!files.includes(name)) name = files[0];
+  if (!name) {
+    S = cached ? migrate(cached.state) : defaultState('Mijn dashboard');
+    FS.file = await freeFileName(S.meta.title);
+    await writeJSON(FS.file, S);
+  } else {
+    let st = migrate(await readJSON(name));
+    if (cached && cached.file === name && (cached.state?.meta?.updated || 0) > (st.meta.updated || 0)) st = migrate(cached.state);
+    S = st; FS.file = name;
+  }
+  await IDB.set('lastFile', FS.file);
+  cacheLocal();
+}
+async function switchFile(name) {
+  await flush();
+  const st = migrate(await readJSON(name));
+  S = st; FS.file = name; await IDB.set('lastFile', name); cacheLocal();
+  applyTheme(); renderAll(); if (editing) { renderRepo(); renderSettings(); }
+  toast('Geopend: ' + S.meta.title);
+}
+function showBanner(html, btnLabel, onClick) {
+  const b = $('#banner'); b.innerHTML = '';
+  b.append(h('span', { html: icon('folder', 18) }), h('span', { html }), btnLabel ? h('button', { class: 'btn primary sm', onclick: onClick }, btnLabel) : null);
+  b.classList.add('show');
+}
+function hideBanner() { $('#banner').classList.remove('show'); }
+async function reconnect() {
+  try {
+    const p = await FS.dir.requestPermission({ mode: 'readwrite' });
+    if (p !== 'granted') return toast('Zonder toestemming kan ik niet in je map opslaan');
+    FS.perm = true; hideBanner();
+    const cached = JSON.parse(localStorage.getItem('streamline.cache') || 'null');
+    await openFromDir(cached); applyTheme(); renderAll(); toast('Map gekoppeld — alles wordt weer in je bestand opgeslagen');
+  } catch (e) { toast('Koppelen mislukt: ' + e.message); }
+}
+function welcome() {
+  let preset = 'licht';
+  const title = h('input', { class: 'inp', placeholder: 'Bijv. Werk, Marketing, Mijn dashboard', value: 'Mijn dashboard' });
+  const seg = h('div', { class: 'seg' });
+  const drawSeg = () => { seg.innerHTML = ''; for (const [k, l] of [['licht', 'Licht'], ['donker', 'Donker']]) seg.append(h('button', { class: preset === k ? 'on' : '', onclick: () => { preset = k; S.theme.preset = k; applyTheme(); drawSeg(); } }, l)); };
+  S = defaultState('Mijn dashboard'); applyTheme(); drawSeg();
+  const go = async useDir => {
+    const t = title.value.trim() || 'Mijn dashboard';
+    try {
+      if (useDir) {
+        await pickDir();
+        const files = await listFiles();
+        if (files.length) { await openFromDir(null); toast('Bestaande instellingen gevonden en geopend'); }
+        else { S = defaultState(t, preset); FS.file = await freeFileName(t); await writeJSON(FS.file, S); await IDB.set('lastFile', FS.file); }
+      } else S = defaultState(t, preset);
+      m.close(); cacheLocal(); start();
+    } catch (e) { if (e.name !== 'AbortError') toast('Dat lukte niet: ' + e.message); }
+  };
+  const m = openModal({ title: 'Welkom bij Streamline', body: h('div', {},
+    h('div', { class: 'welcome-mark', html: LOGO }),
+    h('p', {}, 'Je eigen dashboard dat volledig op je eigen computer blijft. Geef je eerste instellingenbestand een naam en kies waar het wordt bewaard.'),
+    h('div', { class: 'field' }, h('label', {}, 'Naam van je dashboard'), title),
+    h('div', { class: 'field' }, h('label', {}, 'Thema'), seg),
+    h('p', { class: 'hint', html: FS.supported
+      ? 'Kies bij voorkeur <b>dezelfde map als waar dit HTML-bestand staat</b>. Daar zet Streamline je instellingenbestand neer (<code>naam.streamline.json</code>), zodat je het kunt back-uppen of delen. Er gaat niets naar internet.'
+      : 'Deze browser kan geen map op je computer koppelen. Gebruik Chrome of Edge voor de beste ervaring. Je kunt nu wel starten: alles wordt dan in deze browser bewaard en je kunt het exporteren.' })),
+    foot: [h('button', { class: 'btn left', onclick: () => go(false) }, 'Alleen in deze browser'), FS.supported ? h('button', { class: 'btn primary', onclick: () => go(true) }, h('span', { html: icon('folder', 15) }), 'Map kiezen en starten') : null] });
+}
+function start() {
+  booted = true;
+  applyTheme(); renderAll();
+  if (!FS.dir && FS.supported) showBanner('Je instellingen staan nu alleen in deze browser. Koppel een map om ze als bestand te bewaren en te kunnen delen.', 'Map koppelen', async () => { try { await pickDir(); hideBanner(); FS.file = await freeFileName(S.meta.title); await flush(); await IDB.set('lastFile', FS.file); toast('Opgeslagen als ' + FS.file); } catch (e) {} });
+  checkReminders(); setInterval(checkReminders, 10000);
+  setInterval(() => { for (const it of [...S.global, ...currentPage().items]) if (it.type === 'title' && /\{(groet|tijd|datum)\}/i.test(it.config.text)) buildItem(it); }, 60000);
+  if (S.update.repo) setTimeout(() => checkUpdate(false), 1500);
+}
+async function boot() {
+  try { const t = JSON.parse(localStorage.getItem('streamline.theme') || 'null'); if (t) for (const [k, v] of Object.entries({ '--bg': t.t.bg, '--ink': t.t.ink, '--surface': t.t.surface })) document.documentElement.style.setProperty(k, v); } catch (e) {}
+  $('#brandmark').innerHTML = LOGO;
+  initDrag(); initPanels(); initKeys();
+  // voorkom dat de browser een losgelaten bestand opent als je naast een widget mikt
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('drop', e => e.preventDefault());
+  $('#gear').onclick = () => setEditing(!editing);
+  $('#btn-settings').onclick = () => showPanel('settings', !$('#panel-settings').classList.contains('show'));
+  $('#btn-repo').onclick = () => showPanel('repo', !$('#panel-repo').classList.contains('show'));
+  $('#btn-done').onclick = () => setEditing(false);
+  $('#updatebtn').onclick = installUpdate;
+  for (const b of $$('.panel .x')) b.onclick = () => showPanel(b.closest('.panel').dataset.name, false);
+  await loadPlugins();
+  let cached = null; try { cached = JSON.parse(localStorage.getItem('streamline.cache') || 'null'); } catch (e) {}
+  if (FS.supported) FS.dir = (await IDB.get('dir')) || null;
+  if (FS.dir) {
+    let perm = 'prompt'; try { perm = await FS.dir.queryPermission({ mode: 'readwrite' }); } catch (e) {}
+    if (perm === 'granted') { FS.perm = true; try { await openFromDir(cached); return start(); } catch (e) { console.warn(e); } }
+    if (cached) { S = migrate(cached.state); FS.file = cached.file; start(); }
+    else { S = defaultState('Mijn dashboard'); start(); }
+    showBanner(`Klik om je map “${esc(FS.dir.name)}” weer te koppelen. Tot die tijd bewaart Streamline je wijzigingen in de browser.`, 'Map koppelen', reconnect);
+    return;
+  }
+  if (cached) { S = migrate(cached.state); FS.file = cached.file; return start(); }
+  welcome();
+}
+function initKeys() {
+  document.addEventListener('keydown', e => {
+    const typing = e.target.closest('input,textarea,select,[contenteditable="true"]');
+    if (e.key === 'Escape') {
+      if (openPop) return closePop();
+      if (modalStack.length) return modalStack.at(-1).close();
+      if (editing) return setEditing(false);
+    }
+    if (editing && !typing && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+  });
+}
+const LOGO = `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round">${Array.from({ length: 12 }, (_, i) => { const a = i * Math.PI / 6, r1 = 9, r2 = i % 2 ? 19 : 21.5; return `<line x1="${(24 + r1 * Math.cos(a)).toFixed(2)}" y1="${(24 + r1 * Math.sin(a)).toFixed(2)}" x2="${(24 + r2 * Math.cos(a)).toFixed(2)}" y2="${(24 + r2 * Math.sin(a)).toFixed(2)}"/>`; }).join('')}</svg>`;
+
+/* ==========================================================================
+   Streamline — instellingenpaneel
+   ========================================================================== */
+let settingsTab = 'algemeen';
+const TABS = [['algemeen', 'Algemeen'], ['thema', 'Thema'], ['titels', 'Titels'], ['paginas', "Pagina's"], ['bestanden', 'Bestanden'], ['uitbr', 'Uitbreidingen'], ['updates', 'Updates'], ['over', 'Over']];
+
+function renderSettings() {
+  const tabs = $('#settings-tabs'), body = $('#settings-body');
+  if (!tabs || !$('#panel-settings').classList.contains('show')) return;
+  tabs.innerHTML = '';
+  for (const [k, l] of TABS) tabs.append(h('button', { class: settingsTab === k ? 'on' : '', onclick: () => { settingsTab = k; renderSettings(); } }, l));
+  body.innerHTML = '';
+  ({ algemeen: tabGeneral, thema: tabTheme, titels: tabTitles, paginas: tabPages, bestanden: tabFiles, uitbr: tabPlugins, updates: tabUpdates, over: tabAbout })[settingsTab](body);
+}
+const sect = (title, ...kids) => h('div', { class: 'sect' }, h('h4', {}, title), ...kids);
+function segCtl(options, value, onPick) {
+  const s = h('div', { class: 'seg' });
+  const draw = v => { s.innerHTML = ''; for (const [k, l] of options) s.append(h('button', { class: v === k ? 'on' : '', onclick: () => { onPick(k); draw(k); } }, l)); };
+  draw(value); return s;
+}
+
+function tabGeneral(b) {
+  const nav = S.global.find(i => i.type === 'nav') || allItems().find(i => i.type === 'nav');
+  b.append(
+    sect('Dit instellingenbestand',
+      h('div', { class: 'field' }, h('label', {}, 'Titel (staat linksboven naast Streamline)'),
+        h('input', { class: 'inp', value: S.meta.title, oninput: e => { S.meta.title = e.target.value; renderTop(); save(); } }))),
+    sect('Paginamenu',
+      nav ? [
+        h('div', { class: 'field' }, h('label', {}, 'Richting'), segCtl([['h', 'Horizontaal'], ['v', 'Verticaal']], nav.config.orientation, v => setAllNav('orientation', v))),
+        h('div', { class: 'field' }, h('label', {}, 'Knoppen'), segCtl([['icons', 'Iconen'], ['labels', 'Namen'], ['both', 'Beide']], nav.config.display, v => setAllNav('display', v))),
+        h('p', { class: 'hint' }, 'Tip: bij een verticaal menu maak je het onderdeel smal en hoog (bijv. 2 × 10). Het menu zelf verplaats je net als elke widget.'),
+      ] : h('p', { class: 'hint' }, 'Er staat geen paginamenu op je dashboard. Voeg het toe via de repository (Basis → Paginamenu).')),
+    sect('Raster',
+      h('div', { class: 'field' }, h('label', {}, `Aantal kolommen: ${S.grid.cols}`), h('input', { type: 'range', min: 12, max: 48, step: 2, value: S.grid.cols, onchange: e => { const old = S.grid.cols, nw = +e.target.value; rescaleGrid(old, nw); renderSettings(); } })),
+      h('div', { class: 'field' }, h('label', {}, `Rijhoogte: ${S.grid.rowH}px`), h('input', { type: 'range', min: 20, max: 72, step: 2, value: S.grid.rowH, oninput: e => { S.grid.rowH = +e.target.value; e.target.previousSibling.textContent = `Rijhoogte: ${S.grid.rowH}px`; layout(); save(); } })),
+      h('div', { class: 'field' }, h('label', {}, `Tussenruimte: ${S.grid.gap}px`), h('input', { type: 'range', min: 4, max: 32, step: 2, value: S.grid.gap, oninput: e => { S.grid.gap = +e.target.value; e.target.previousSibling.textContent = `Tussenruimte: ${S.grid.gap}px`; layout(); save(); } })),
+      h('p', { class: 'hint' }, 'Bij een ander aantal kolommen schaalt Streamline je indeling automatisch mee.')),
+  );
+}
+function setAllNav(key, v) { for (const it of allItems()) if (it.type === 'nav') { it.config[key] = v; if (els.has(it.id)) buildItem(it); } save(); }
+function rescaleGrid(oldC, newC) {
+  pushHistory();
+  const f = newC / oldC;
+  for (const it of allItems()) { it.x = Math.round(it.x * f); it.w = Math.max(1, Math.round(it.w * f)); if (it.x + it.w > newC) it.x = Math.max(0, newC - it.w); }
+  S.grid.cols = newC; save(); layout();
+}
+
+function tabTheme(b) {
+  const grid = h('div', { class: 'swatches' });
+  const all = [...Object.entries(THEMES), ['eigen', { ...THEMES.licht, ...S.theme.custom, name: 'Eigen' }]];
+  for (const [k, t] of all) grid.append(h('button', { class: 'swatch' + (!S.theme.auto && S.theme.preset === k ? ' on' : ''), onclick: () => { S.theme.preset = k; S.theme.auto = false; applyTheme(); save(); renderSettings(); } },
+    h('div', { class: 'sw', style: { background: t.bg, border: '1px solid ' + t.line } }, h('i', { style: { background: t.surface } }), h('i', { style: { background: t.accent } }), h('i', { style: { background: t.ink } })),
+    h('b', {}, t.name)));
+  b.append(sect('Thema', grid,
+    h('label', { class: 'check', style: { marginTop: '12px' } }, h('input', { type: 'checkbox', checked: S.theme.auto, onchange: e => { S.theme.auto = e.target.checked; applyTheme(); save(); renderSettings(); } }), 'Volg Windows: licht overdag, donker als Windows donker staat')));
+  b.append(sect('Afronding van hoeken',
+    h('div', { class: 'row' }, h('input', { type: 'range', min: 0, max: 32, value: S.theme.radius, oninput: e => { S.theme.radius = +e.target.value; e.target.nextSibling.textContent = e.target.value + 'px'; applyTheme(); save(); } }), h('span', { class: 'badge' }, S.theme.radius + 'px'))));
+  if (S.theme.preset === 'eigen' && !S.theme.auto) {
+    const ed = h('div');
+    for (const [k, l] of THEME_KEYS) ed.append(h('div', { class: 'row', style: { marginBottom: '8px' } },
+      h('input', { type: 'color', value: S.theme.custom[k], oninput: e => { S.theme.custom[k] = e.target.value; applyTheme(); save(); } }), h('span', { class: 'grow' }, l)));
+    ed.append(h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!S.theme.custom.dark, onchange: e => { S.theme.custom.dark = e.target.checked; applyTheme(); save(); } }), 'Dit is een donker thema (voor schuifbalken en formulieren)'));
+    ed.append(h('div', { class: 'lbl', style: { margin: '8px 0 6px' } }, 'Begin opnieuw vanaf:'), h('div', { class: 'row', style: { flexWrap: 'wrap' } }, Object.entries(THEMES).map(([k, t]) => h('button', { class: 'btn sm', onclick: () => { S.theme.custom = { ...t }; applyTheme(); save(); renderSettings(); } }, t.name))));
+    b.append(sect('Eigen thema samenstellen', ed));
+  } else b.append(h('p', { class: 'hint' }, 'Kies “Eigen” om zelf alle kleuren samen te stellen.'));
+}
+
+function tabTitles(b) {
+  const ty = S.typography;
+  const prev = h('div', { style: { fontFamily: FONTS[ty.font], color: ty.color || 'var(--ink)', fontWeight: ty.weight, fontSize: '28px', padding: '14px', background: 'var(--surface-2)', borderRadius: 'var(--r-sm)', marginBottom: '14px' } }, 'Zo zien je titels eruit');
+  const upd = () => { applyTheme(); save(); Object.assign(prev.style, { fontFamily: FONTS[ty.font], color: ty.color || 'var(--ink)', fontWeight: ty.weight }); };
+  b.append(h('p', { class: 'hint' }, 'Deze instellingen gelden voor alle titels op al je pagina’s tegelijk.'), prev,
+    h('div', { class: 'field' }, h('label', {}, 'Lettertype'), h('select', { class: 'inp', value: ty.font, onchange: e => { ty.font = e.target.value; upd(); } }, Object.keys(FONTS).map(f => h('option', { value: f, style: { fontFamily: FONTS[f] } }, f)))),
+    h('div', { class: 'field' }, h('label', {}, 'Dikte'), segCtl([[300, 'Dun'], [400, 'Normaal'], [600, 'Halfvet'], [800, 'Vet']], ty.weight, v => { ty.weight = v; upd(); })),
+    fieldEl({ key: 'color', label: 'Kleur', type: 'color', allowTheme: true, fallback: activeTheme().ink }, ty, () => upd()),
+    h('p', { class: 'hint' }, 'Lettertypes komen van je eigen computer (geen downloads van internet). Op Windows zijn ze allemaal aanwezig.'));
+}
+
+function tabPages(b) {
+  const list = h('div');
+  S.pages.forEach((p, i) => {
+    list.append(h('div', { class: 'list-row' + (p.id === S.activePage ? ' on' : '') },
+      h('button', { class: 'iconbtn', title: 'Icoon kiezen', html: icon(p.icon || 'layout', 16), onclick: () => iconPicker(p.icon, v => { p.icon = v; save(); refreshNav(); renderSettings(); }) }),
+      h('input', { class: 'inp grow', value: p.name, oninput: e => { p.name = e.target.value; save(); refreshNav(); } }),
+      ib('chevronup', 'Omhoog', () => { if (i) { S.pages.splice(i - 1, 0, S.pages.splice(i, 1)[0]); save(); refreshNav(); renderSettings(); } }, 'mini'),
+      ib('chevrondown', 'Omlaag', () => { if (i < S.pages.length - 1) { S.pages.splice(i + 1, 0, S.pages.splice(i, 1)[0]); save(); refreshNav(); renderSettings(); } }, 'mini'),
+      ib('copy', 'Pagina dupliceren', () => { const c = clone(p); c.id = uid(); c.name += ' (kopie)'; c.items.forEach(it => it.id = uid()); S.pages.splice(i + 1, 0, c); save(); refreshNav(); renderSettings(); }, 'mini'),
+      ib('trash', 'Verwijderen', async () => {
+        if (S.pages.length < 2) return toast('Je hebt minstens één pagina nodig');
+        if (!(await confirmDlg('Pagina verwijderen?', `“${p.name}” en alles erop wordt verwijderd.`, 'Verwijderen', true))) return;
+        S.pages.splice(i, 1); if (S.activePage === p.id) S.activePage = S.pages[0].id; save(); renderAll(); renderSettings();
+      }, 'mini')));
+  });
+  b.append(sect("Pagina's", list, h('button', { class: 'btn', onclick: () => newPage() }, h('span', { html: icon('plus', 15) }), 'Nieuwe pagina')));
+}
+async function newPage() {
+  const name = await ask('Nieuwe pagina', 'Naam van de pagina', '', 'Bijv. Projecten');
+  if (!name) return;
+  const p = { id: uid(), name, icon: 'layout', items: [] };
+  S.pages.push(p); S.activePage = p.id; save(); renderAll(); renderSettings();
+}
+function refreshNav() { for (const it of [...S.global, ...currentPage().items]) if (it.type === 'nav') buildItem(it); }
+
+function tabFiles(b) {
+  const status = FS.dir
+    ? h('div', { class: 'list-row' }, h('span', { html: icon('folder', 18) }), h('div', { class: 'grow' }, h('b', {}, FS.dir.name), h('div', { class: 'hint', style: { margin: 0 } }, FS.perm ? `Actief bestand: ${FS.file}` : 'Nog geen toestemming in deze sessie')),
+        FS.perm ? null : h('button', { class: 'btn primary sm', onclick: reconnect }, 'Koppelen'))
+    : h('div', { class: 'list-row' }, h('span', { html: icon('alert', 18) }), h('div', { class: 'grow hint', style: { margin: 0 } }, 'Geen map gekoppeld: je instellingen staan alleen in deze browser.'));
+  b.append(sect('Opslaglocatie', status,
+    FS.supported ? h('button', { class: 'btn', onclick: async () => {
+      try { await flush(); await pickDir(); const files = await listFiles(); if (files.length) await switchFile(files[0]); else { FS.file = await freeFileName(S.meta.title); await flush(); await IDB.set('lastFile', FS.file); } hideBanner(); renderSettings(); } catch (e) {}
+    } }, h('span', { html: icon('folder', 15) }), FS.dir ? 'Andere map kiezen' : 'Map koppelen') : null));
+
+  const filesBox = h('div', {}, h('div', { class: 'hint' }, 'Laden…'));
+  b.append(sect('Instellingenbestanden in deze map', filesBox,
+    h('div', { class: 'row', style: { flexWrap: 'wrap', marginTop: '8px' } },
+      h('button', { class: 'btn sm', onclick: newSettingsFile }, h('span', { html: icon('plus', 14) }), 'Nieuw'),
+      h('button', { class: 'btn sm', onclick: dupSettingsFile }, h('span', { html: icon('copy', 14) }), 'Dupliceer huidige'),
+      h('button', { class: 'btn sm', onclick: () => download(FS.file || slug(S.meta.title) + EXT, JSON.stringify(S, null, 2), 'application/json') }, h('span', { html: icon('download', 14) }), 'Exporteren'),
+      h('button', { class: 'btn sm', onclick: importSettingsFile }, h('span', { html: icon('upload', 14) }), 'Importeren'))));
+  (async () => {
+    filesBox.innerHTML = '';
+    const files = await listFiles();
+    if (!files.length) return filesBox.append(h('div', { class: 'hint' }, FS.dir ? 'Nog geen bestanden.' : 'Koppel een map om meerdere instellingenbestanden te beheren.'));
+    for (const f of files) filesBox.append(h('div', { class: 'list-row' + (f === FS.file ? ' on' : '') },
+      h('span', { html: icon('file', 16) }), h('span', { class: 'grow', style: { overflow: 'hidden', textOverflow: 'ellipsis' } }, f),
+      f === FS.file ? h('span', { class: 'badge' }, 'actief') : h('button', { class: 'btn sm', onclick: () => switchFile(f).then(renderSettings) }, 'Openen')));
+  })();
+
+  b.append(sect('Onderdelen kopiëren tussen bestanden',
+    h('p', { class: 'hint' }, 'Kopieer losse widgets, complete vakken met hun inhoud of hele pagina’s van het ene instellingenbestand naar het andere.'),
+    h('button', { class: 'btn', onclick: openCopyBetween }, h('span', { html: icon('layers', 15) }), 'Kopiëren…')));
+}
+async function newSettingsFile() {
+  const t = await ask('Nieuw instellingenbestand', 'Naam van het dashboard', '', 'Bijv. Marketing');
+  if (!t) return;
+  const st = defaultState(t, S.theme.preset);
+  if (FS.dir && FS.perm) { const n = await freeFileName(t); await writeJSON(n, st); await switchFile(n); renderSettings(); }
+  else { if (!(await confirmDlg('Zonder map', 'Zonder gekoppelde map kun je maar één instellingenbestand tegelijk gebruiken. Het huidige wordt eerst gedownload als reservekopie en daarna vervangen.', 'Doorgaan'))) return; download(slug(S.meta.title) + EXT, JSON.stringify(S, null, 2)); S = st; save(); applyTheme(); renderAll(); renderSettings(); }
+}
+async function dupSettingsFile() {
+  if (!(FS.dir && FS.perm)) return toast('Koppel eerst een map');
+  const t = await ask('Dupliceren', 'Naam van de kopie', S.meta.title + ' (kopie)');
+  if (!t) return;
+  const st = clone(S); st.meta.title = t; st.meta.created = Date.now();
+  const n = await freeFileName(t); await writeJSON(n, st); toast('Kopie gemaakt: ' + n); renderSettings();
+}
+function pickJSONFile() {
+  return new Promise(res => {
+    const inp = h('input', { type: 'file', accept: '.json,application/json', onchange: async () => { const f = inp.files[0]; if (!f) return res(null); try { res({ name: f.name, data: JSON.parse(await f.text()) }); } catch (e) { toast('Dit is geen geldig instellingenbestand'); res(null); } } });
+    inp.click();
+  });
+}
+async function importSettingsFile() {
+  const f = await pickJSONFile(); if (!f) return;
+  if (f.data.app !== 'streamline' && !f.data.pages) return toast('Dit is geen Streamline-instellingenbestand');
+  const st = migrate(f.data);
+  if (FS.dir && FS.perm) { const n = await freeFileName(st.meta.title); await writeJSON(n, st); await switchFile(n); renderSettings(); }
+  else { if (!(await confirmDlg('Importeren', 'Je huidige dashboard wordt vervangen. Eerst wordt een reservekopie gedownload.', 'Importeren'))) return; download(slug(S.meta.title) + EXT, JSON.stringify(S, null, 2)); S = st; save(); applyTheme(); renderAll(); renderSettings(); }
+}
+
+/* --- kopiëren tussen bestanden --- */
+async function openCopyBetween() {
+  const files = await listFiles();
+  const sources = [['__current', 'Huidig: ' + S.meta.title], ...files.filter(f => f !== FS.file).map(f => [f, f]), ['__pick', 'Bestand van mijn computer…']];
+  const targets = [['__current', 'Huidig: ' + S.meta.title], ...files.filter(f => f !== FS.file).map(f => [f, f])];
+  let src = files.length > 1 ? sources[1][0] : '__pick', dst = '__current', srcState = null, targetPage = '__new';
+  const sel = new Set();
+  const treeBox = h('div', { class: 'tree' });
+  const tpSel = h('select', { class: 'inp' });
+  const loadSrc = async () => {
+    sel.clear();
+    if (src === '__current') srcState = S;
+    else if (src === '__pick') { const f = await pickJSONFile(); srcState = f ? migrate(f.data) : null; }
+    else srcState = migrate(await readJSON(src));
+    drawTree();
+  };
+  const loadTargetPages = async () => {
+    const st = dst === '__current' ? S : migrate(await readJSON(dst));
+    tpSel.innerHTML = ''; tpSel.append(h('option', { value: '__new' }, 'Als nieuwe pagina'), st.pages.map(p => h('option', { value: p.id }, 'Op pagina: ' + p.name)));
+    tpSel.value = targetPage = '__new';
+  };
+  tpSel.onchange = () => targetPage = tpSel.value;
+  const label = it => `${WIDGETS[it.type]?.name || it.type}${(it.config.label || it.config.title || it.config.text) ? ' — ' + fmtVars(it.config.label || it.config.title || it.config.text) : ''}`;
+  const drawTree = () => {
+    treeBox.innerHTML = '';
+    if (!srcState) return treeBox.append(h('div', { class: 'hint' }, 'Kies een bronbestand.'));
+    for (const p of srcState.pages) {
+      const boxes = p.items.filter(i => i.type === 'box');
+      const inBox = new Set(boxes.flatMap(bx => p.items.filter(i => inside(i, bx)).map(i => i.id)));
+      const pgCb = h('input', { type: 'checkbox', onchange: e => { p.items.forEach(i => e.target.checked ? sel.add(i.id) : sel.delete(i.id)); drawTree(); } });
+      pgCb.checked = p.items.length && p.items.every(i => sel.has(i.id));
+      treeBox.append(h('label', { class: 'pg' }, pgCb, h('span', { html: icon(p.icon || 'layout', 15) }), p.name));
+      const row = (it, cls) => {
+        const cb = h('input', { type: 'checkbox', checked: sel.has(it.id), onchange: e => {
+          const ids = [it.id, ...(it.type === 'box' ? p.items.filter(i => inside(i, it)).map(i => i.id) : [])];
+          ids.forEach(id => e.target.checked ? sel.add(id) : sel.delete(id)); drawTree();
+        } });
+        return h('label', { class: cls }, cb, h('span', { html: icon(WIDGETS[it.type]?.icon || 'grid', 14) }), label(it));
+      };
+      for (const it of p.items.filter(i => !inBox.has(i.id))) {
+        treeBox.append(row(it, 'sub'));
+        if (it.type === 'box') for (const k of p.items.filter(i => inside(i, it))) treeBox.append(h('div', { style: { paddingLeft: '24px' } }, row(k, 'sub')));
+      }
+    }
+  };
+  const srcSel = h('select', { class: 'inp', value: src, onchange: e => { src = e.target.value; loadSrc(); } }, sources.map(([v, l]) => h('option', { value: v }, l)));
+  const dstSel = h('select', { class: 'inp', value: dst, onchange: e => { dst = e.target.value; loadTargetPages(); } }, targets.map(([v, l]) => h('option', { value: v }, l)));
+  const m = openModal({ title: 'Onderdelen kopiëren', wide: true, body: h('div', {},
+    h('div', { class: 'row', style: { alignItems: 'flex-end' } },
+      h('div', { class: 'field grow' }, h('label', {}, 'Van'), srcSel),
+      h('span', { style: { paddingBottom: '18px' }, html: icon('chevronright', 18) }),
+      h('div', { class: 'field grow' }, h('label', {}, 'Naar'), dstSel),
+      h('div', { class: 'field grow' }, h('label', {}, 'Plaats'), tpSel)),
+    h('p', { class: 'hint' }, 'Vink aan wat je wilt kopiëren. Een vak neemt automatisch alles mee wat erin staat. De onderlinge indeling blijft behouden.'),
+    treeBox),
+    foot: [h('button', { class: 'btn', onclick: () => m.close() }, 'Annuleren'), h('button', { class: 'btn primary', onclick: async () => {
+      if (!srcState || !sel.size) return toast('Vink eerst iets aan');
+      const dstState = dst === '__current' ? S : migrate(await readJSON(dst));
+      const picked = srcState.pages.flatMap(p => p.items.filter(i => sel.has(i.id)).map(i => ({ i, p })));
+      let page;
+      if (targetPage === '__new') { const srcPages = [...new Set(picked.map(x => x.p))]; page = { id: uid(), name: srcPages.length === 1 ? srcPages[0].name : 'Gekopieerd', icon: srcPages[0]?.icon || 'layout', items: [] }; dstState.pages.push(page); }
+      else page = dstState.pages.find(p => p.id === targetPage);
+      const minY = Math.min(...picked.map(x => x.i.y)), base = targetPage === '__new' ? 3 : pageBottom(page.items) + 1;
+      for (const { i } of picked) { const c = clone(i); c.id = uid(); c.locked = false; c.y = c.y - minY + base; page.items.push(c); }
+      if (dst === '__current') { save(); renderAll(); } else await writeJSON(dst, dstState);
+      toast(`${picked.length} onderdelen gekopieerd`); m.close();
+    } }, 'Kopiëren')] });
+  srcSel.value = src; dstSel.value = dst;
+  await loadTargetPages();
+  if (src !== '__pick') await loadSrc(); else drawTree();
+}
+
+function tabPlugins(b) {
+  b.append(h('p', { class: 'hint' }, 'Extra widgets haal je uit je eigen GitHub-repository (map “widgets”). Ze worden één keer gedownload en daarna lokaal bewaard; er gaat niets van jou naar GitHub. Installeer alleen widgets uit een repository die je vertrouwt.'));
+  b.append(h('div', { class: 'field' }, h('label', {}, 'GitHub-repository (eigenaar/naam)'), h('input', { class: 'inp', value: S.update.repo, placeholder: 'bijv. MehMienLepke/streamline', onchange: e => { S.update.repo = e.target.value.trim(); save(); } })));
+  const box = h('div');
+  b.append(h('button', { class: 'btn', onclick: async () => {
+    box.innerHTML = '<div class="hint">Ophalen…</div>';
+    try { await fetchRegistry(); drawReg(); } catch (e) { box.innerHTML = ''; box.append(h('div', { class: 'hint' }, 'Kon de widgetlijst niet ophalen (' + e.message + '). Controleer de repository-naam en of het bestand widgets/registry.json bestaat.')); }
+  } }, h('span', { html: icon('refresh', 15) }), 'Widgets ophalen van GitHub'), box);
+  const drawReg = async () => {
+    box.innerHTML = ''; const store = (await IDB.get('plugins')) || {};
+    const list = remote.registry?.widgets || [];
+    if (!list.length) return box.append(h('div', { class: 'hint' }, 'Geen widgets gevonden.'));
+    for (const w of list) {
+      const inst = store[w.id];
+      const upd = inst && cmpVer(w.version, inst.version) > 0;
+      box.append(h('div', { class: 'list-row', style: { marginTop: '8px' } }, h('span', { html: icon(w.icon || 'grid', 18) }),
+        h('div', { class: 'grow' }, h('b', {}, w.name, ' '), h('span', { class: 'badge' }, 'v' + w.version), h('div', { class: 'hint', style: { margin: 0 } }, w.description || '')),
+        h('button', { class: 'btn sm' + (inst && !upd ? '' : ' primary'), onclick: async () => { try { await installPlugin(w); toast(w.name + ' geïnstalleerd'); drawReg(); renderRepo(); } catch (e) { toast('Mislukt: ' + e.message); } } }, inst ? (upd ? 'Bijwerken' : 'Opnieuw') : 'Installeren'),
+        inst ? ib('trash', 'Verwijderen', async () => { await removePlugin(w.id); drawReg(); }, 'mini') : null));
+    }
+  };
+  (async () => {
+    const store = (await IDB.get('plugins')) || {};
+    const inst = Object.values(store);
+    if (inst.length) b.append(sect('Geïnstalleerd in deze browser', inst.map(p => h('div', { class: 'list-row' }, h('span', { html: icon(p.icon || 'grid', 16) }), h('span', { class: 'grow' }, p.name), h('span', { class: 'badge' }, 'v' + p.version), ib('trash', 'Verwijderen', async () => { await removePlugin(p.id); renderSettings(); }, 'mini')))));
+  })();
+}
+
+function tabUpdates(b) {
+  const u = S.update;
+  b.append(
+    h('div', { class: 'list-row' }, h('span', { html: icon('info', 18) }), h('div', { class: 'grow' }, 'Jouw versie: ', h('b', {}, APP_VERSION), remote.version ? h('div', { class: 'hint', style: { margin: 0 } }, 'Op GitHub: ' + remote.version) : null)),
+    h('div', { class: 'field', style: { marginTop: '12px' } }, h('label', {}, 'GitHub-repository (eigenaar/naam)'), h('input', { class: 'inp', value: u.repo, placeholder: 'bijv. MehMienLepke/streamline', onchange: e => { u.repo = e.target.value.trim(); save(); } })),
+    h('div', { class: 'row' },
+      h('div', { class: 'field grow' }, h('label', {}, 'Branch'), h('input', { class: 'inp', value: u.branch, onchange: e => { u.branch = e.target.value.trim() || 'main'; save(); } })),
+      h('div', { class: 'field grow' }, h('label', {}, 'Naam van je HTML-bestand'), h('input', { class: 'inp', value: u.htmlName, onchange: e => { u.htmlName = e.target.value.trim() || 'streamline.html'; save(); } }))),
+    h('div', { class: 'field' }, h('label', {}, 'Updateknop tonen bij'), segCtl([['major', 'Grote updates'], ['all', 'Alle updates'], ['never', 'Nooit']], u.notify, v => { u.notify = v; save(); })),
+    h('button', { class: 'btn primary', onclick: () => checkUpdate(true).then(renderSettings) }, h('span', { html: icon('refresh', 15) }), 'Nu controleren'),
+    h('p', { class: 'hint', style: { marginTop: '12px' } }, 'Bij een update vervangt Streamline alleen het HTML-bestand. Je instellingenbestand blijft staan en er komt eerst een reservekopie in de map “backups”. Bestaat een widget die je gebruikte niet meer, dan blijft zijn inhoud bewaard en zie je een melding op die plek.'));
+}
+
+function tabAbout(b) {
+  const helper = document.documentElement.dataset.streamlineHelper;
+  b.append(
+    h('div', { style: { display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' } }, h('div', { style: { width: '44px', color: 'var(--accent)' }, html: LOGO }), h('div', {}, h('b', { style: { font: '600 20px var(--font-display)' } }, 'Streamline'), h('div', { class: 'hint', style: { margin: 0 } }, 'Versie ' + APP_VERSION))),
+    sect('Privacy',
+      h('p', { class: 'hint' }, 'Alles wat je maakt (dashboards, to do’s, notities, instellingen) wordt alleen op jouw computer bewaard: in je instellingenbestand en als reservekopie in deze browser. De pagina blokkeert technisch elk verzoek om gegevens te versturen; alleen GitHub mag gelezen worden voor updates en widgets. Radiozenders, favicons en websites in je knoppen worden alleen geladen als jij ze gebruikt.'),
+      h('p', { class: 'hint' }, 'Afbeeldingen die je bijsnijdt, verlaten je computer nooit.')),
+    sect('Hulp-extensie voor toetsaanslagen',
+      h('div', { class: 'list-row' }, h('span', { html: icon(helper ? 'check' : 'alert', 16) }), h('span', {}, helper ? 'Streamline Helper is actief (v' + helper + ')' : 'Niet gevonden — Actieknoppen kunnen dan alleen websites openen.')),
+      h('p', { class: 'hint' }, 'Een browser staat niet toe dat een pagina in andere tabbladen typt. De kleine extensie “Streamline Helper” (in de map helper-extensie) maakt dat mogelijk. Zie LEESMIJ.md voor de installatie.')),
+    sect('Sneltoetsen', h('p', { class: 'hint', html: '<kbd>Esc</kbd> sluit vensters of de bewerkmodus · <kbd>Ctrl</kbd>+<kbd>Z</kbd> ongedaan maken in de bewerkmodus · dubbelklik op een onderdeel in de bewerkmodus opent de instellingen.' })));
+}
+
+/* ==========================================================================
+   Streamline — ingebouwde widgets
+   Elke widget gebruikt dezelfde Streamline.registerWidget()-aanpak als
+   uitbreidingen van GitHub. Zie widgets/klok.js voor een voorbeeld.
+   ========================================================================== */
+const reg = def => Streamline.registerWidget(def);
+const hexA = (hex, a) => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null; const n = parseInt(m[1], 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const normUrl = u => { u = String(u || '').trim(); if (!u) return ''; return /^[a-z][a-z0-9+.-]*:/i.test(u) ? u : 'https://' + u; };
+const hostOf = u => { try { return new URL(normUrl(u)).hostname.replace(/^www\./, ''); } catch (e) { return ''; } };
+function openUrl(u) { const url = normUrl(u); if (!url) return null; return window.open(url, '_blank', 'noopener'); }
+
+/* ---------- Paginamenu ---------- */
+reg({
+  type: 'nav', name: 'Paginamenu', desc: 'Wissel tussen je pagina’s met iconen of namen', icon: 'menu', group: 'basis', global: true, card: false,
+  size: { w: 7, h: 2 }, min: { w: 1, h: 1 }, rebuildOnEdit: true,
+  defaults: { orientation: 'h', display: 'both' },
+  fields: [
+    { key: 'orientation', label: 'Richting', type: 'seg', options: [['h', 'Horizontaal'], ['v', 'Verticaal']] },
+    { key: 'display', label: 'Knoppen', type: 'seg', options: [['icons', 'Iconen'], ['labels', 'Namen'], ['both', 'Beide']] },
+  ],
+  render(el, ctx) {
+    const c = ctx.config;
+    const nav = h('nav', { class: 'nav' + (c.orientation === 'v' ? ' v' : '') + (c.display === 'icons' ? ' icons' : ''), 'aria-label': "Pagina's" });
+    for (const p of S.pages) nav.append(h('button', { class: p.id === S.activePage ? 'on' : '', title: p.name, onclick: () => goPage(p.id),
+      html: (c.display !== 'labels' ? icon(p.icon || 'layout', 18) : '') + (c.display !== 'icons' ? `<span>${esc(p.name)}</span>` : '') }));
+    if (editing) nav.append(h('button', { class: 'addpage', title: 'Nieuwe pagina', html: icon('plus', 18), onclick: newPage }));
+    el.append(nav);
+  },
+});
+
+/* ---------- Titel ---------- */
+const TITLE_SIZES = { 1: 15, 2: 19, 3: 26, 4: 34, 5: 46, 6: 60 };
+reg({
+  type: 'title', name: 'Titel', desc: 'Kop boven een widget of groep. Lettertype en kleur stel je in bij Instellingen → Titels', icon: 'type', group: 'basis', card: false,
+  size: { w: 8, h: 1 }, min: { w: 1, h: 1 }, configOnAdd: true,
+  defaults: { text: 'Nieuwe titel', size: 3, align: 'left', valign: 'bottom' },
+  fields: [
+    { key: 'text', label: 'Tekst', type: 'text', hint: 'Tip: {groet}, {datum} en {tijd} worden automatisch ingevuld.' },
+    { key: 'size', label: 'Grootte', type: 'seg', options: [[1, 'XS'], [2, 'S'], [3, 'M'], [4, 'L'], [5, 'XL'], [6, 'XXL']] },
+    { key: 'align', label: 'Uitlijning', type: 'seg', options: [['left', 'Links'], ['center', 'Midden'], ['right', 'Rechts']] },
+    { key: 'valign', label: 'Verticaal', type: 'seg', options: [['bottom', 'Onder'], ['mid', 'Midden']] },
+  ],
+  render(el, { config: c }) {
+    el.append(h('div', { class: `ttl ${c.align} ${c.valign === 'mid' ? 'mid' : ''}`, style: { fontSize: (TITLE_SIZES[c.size] || 26) + 'px' } }, fmtVars(c.text)));
+  },
+});
+
+/* ---------- Achtergrondvak ---------- */
+reg({
+  type: 'box', name: 'Achtergrondvak', desc: 'Groepeer widgets op een eigen achtergrond', icon: 'box', group: 'basis', card: false,
+  size: { w: 10, h: 8 }, min: { w: 1, h: 1 },
+  defaults: { bg: '', opacity: 60, radius: 24, border: '', borderWidth: 0, shadow: false },
+  fields: [
+    { key: 'bg', label: 'Achtergrondkleur', type: 'color', allowTheme: true },
+    { key: 'opacity', label: 'Dekking', type: 'range', min: 0, max: 100, unit: '%' },
+    { key: 'radius', label: 'Afronding hoeken', type: 'range', min: 0, max: 48, unit: 'px' },
+    { key: 'border', label: 'Randkleur', type: 'color', allowTheme: true },
+    { key: 'borderWidth', label: 'Randdikte', type: 'range', min: 0, max: 8, unit: 'px' },
+    { key: 'shadow', label: 'Schaduw', type: 'checkbox' },
+  ],
+  render(el, { config: c }) {
+    const a = (c.opacity ?? 60) / 100;
+    el.append(h('div', { class: 'boxv', style: {
+      background: c.bg ? hexA(c.bg, a) : `color-mix(in srgb, var(--surface) ${Math.round(a * 100)}%, transparent)`,
+      borderRadius: c.radius + 'px', border: c.borderWidth ? `${c.borderWidth}px solid ${c.border || 'var(--line)'}` : 'none',
+      boxShadow: c.shadow ? 'var(--shadow)' : 'none' } }));
+  },
+});
+
+/* ---------- Link-knop ---------- */
+const BTN_FIELDS = [
+  { key: 'iconMode', label: 'Afbeelding', type: 'seg', options: [['icon', 'Icoon'], ['favicon', 'Favicon van website'], ['none', 'Geen']] },
+  { key: 'icon', label: 'Icoon', type: 'icon', showIf: c => c.iconMode === 'icon' },
+  { key: 'style', label: 'Stijl', type: 'seg', options: [['card', 'Kaart'], ['accent', 'Accent'], ['dark', 'Donker'], ['outline', 'Rand']] },
+  { key: 'layout', label: 'Indeling', type: 'seg', options: [['stack', 'Onder elkaar'], ['row', 'Naast elkaar']] },
+  { key: 'showLabel', label: 'Naam tonen', type: 'checkbox' },
+];
+function buttonFace(c, url, extra) {
+  const lb = h('button', { class: `lb ${c.style || 'card'} ${c.layout === 'row' ? 'row-layout' : ''}`, title: c.label || url });
+  if (c.iconMode !== 'none') {
+    const box = h('span', { class: 'lbi' });
+    const host = hostOf(url);
+    if (c.iconMode === 'favicon' && host) {
+      const img = h('img', { alt: '', src: `https://${hostOf(url) && new URL(normUrl(url)).host}/favicon.ico`, referrerpolicy: 'no-referrer' });
+      img.onerror = () => { box.innerHTML = icon('globe', 22); };
+      box.append(img);
+    } else box.innerHTML = icon(c.icon || 'globe', 22);
+    lb.append(box);
+  }
+  if (c.showLabel !== false) lb.append(h('span', {}, h('span', { class: 'lbt' }, c.label || hostOf(url) || 'Knop'), c.sub ? h('span', { class: 'lbs', style: { display: 'block' } }, c.sub) : null));
+  if (extra) lb.append(extra);
+  return lb;
+}
+reg({
+  type: 'link', name: 'Link-knop', desc: 'Opent een website in een nieuw tabblad', icon: 'link', group: 'basis', card: false,
+  size: { w: 3, h: 3 }, min: { w: 1, h: 1 }, configOnAdd: true,
+  defaults: { label: 'Nieuwe link', url: '', sub: '', iconMode: 'favicon', icon: 'globe', style: 'card', layout: 'stack', showLabel: true },
+  fields: [
+    { key: 'label', label: 'Naam', type: 'text' },
+    { key: 'url', label: 'Webadres', type: 'url', placeholder: 'https://…' },
+    { key: 'sub', label: 'Onderschrift (optioneel)', type: 'text' },
+    ...BTN_FIELDS,
+  ],
+  render(el, { config: c }) {
+    const b = buttonFace(c, c.url);
+    b.onclick = () => { if (!c.url) return toast('Deze knop heeft nog geen webadres — open de bewerkmodus via het tandwiel'); openUrl(c.url); };
+    el.append(b);
+  },
+});
+
+/* ---------- Actieknop (meerdere sites + toetsaanslagen) ---------- */
+const STEP_TYPES = {
+  open: { label: 'Open website', fields: [['url', 'Webadres', 'https://…']] },
+  wait: { label: 'Wacht', fields: [['ms', 'Milliseconden', '1500']] },
+  waitFor: { label: 'Wacht op element', fields: [['selector', 'CSS-selector', '#zoekveld'], ['ms', 'Max. wachten (ms)', '10000']] },
+  click: { label: 'Klik op element', fields: [['selector', 'CSS-selector', 'button[type=submit]']] },
+  fill: { label: 'Vul veld in', fields: [['selector', 'CSS-selector', 'input[name=q]'], ['text', 'Tekst', '']] },
+  type: { label: 'Typ tekst', fields: [['text', 'Tekst (in het actieve veld)', '']] },
+  key: { label: 'Druk op toets', fields: [['key', 'Toets', 'Enter']] },
+  copy: { label: 'Kopieer naar klembord', fields: [['text', 'Tekst', '']] },
+};
+const KEYS = ['Enter', 'Tab', 'Escape', 'Space', 'Backspace', 'Delete', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Ctrl+A', 'Ctrl+Enter', 'Shift+Tab'];
+function stepsEditor(el, cfg) {
+  cfg.steps = cfg.steps || [];
+  const list = h('div');
+  const draw = () => {
+    list.innerHTML = '';
+    cfg.steps.forEach((st, i) => {
+      const t = STEP_TYPES[st.t] || STEP_TYPES.open;
+      const sf = h('div', { class: 'sf' });
+      for (const [k, l, ph] of t.fields) {
+        if (st.t === 'key') sf.append(h('select', { class: 'inp', value: st.key || 'Enter', onchange: e => st.key = e.target.value }, KEYS.map(k2 => h('option', { value: k2 }, k2))));
+        else sf.append(h('input', { class: 'inp', placeholder: l + (ph ? ' — bijv. ' + ph : ''), value: st[k] ?? '', oninput: e => st[k] = e.target.value }));
+      }
+      if (st.t === 'open') sf.append(h('label', { class: 'check', style: { margin: 0 } }, h('input', { type: 'checkbox', checked: st.bg, onchange: e => st.bg = e.target.checked }), 'Op de achtergrond openen'));
+      list.append(h('div', { class: 'step' },
+        h('select', { class: 'inp', value: st.t, onchange: e => { st.t = e.target.value; draw(); } }, Object.entries(STEP_TYPES).map(([k, v]) => h('option', { value: k }, (i + 1) + '. ' + v.label))),
+        sf,
+        h('div', { class: 'sa' },
+          ib('chevronup', 'Omhoog', () => { if (i) { cfg.steps.splice(i - 1, 0, cfg.steps.splice(i, 1)[0]); draw(); } }, 'mini'),
+          ib('chevrondown', 'Omlaag', () => { if (i < cfg.steps.length - 1) { cfg.steps.splice(i + 1, 0, cfg.steps.splice(i, 1)[0]); draw(); } }, 'mini'),
+          ib('trash', 'Verwijderen', () => { cfg.steps.splice(i, 1); draw(); }, 'mini'))));
+    });
+    if (!cfg.steps.length) list.append(h('div', { class: 'empty' }, 'Nog geen stappen. Begin met “Open website”.'));
+  };
+  draw();
+  el.append(h('div', { class: 'sect' }, h('h4', {}, 'Stappen'), list,
+    h('div', { class: 'row', style: { flexWrap: 'wrap' } },
+      h('button', { class: 'btn sm', onclick: () => { cfg.steps.push({ t: 'open', url: '' }); draw(); } }, '+ Website'),
+      h('button', { class: 'btn sm', onclick: () => { cfg.steps.push({ t: 'wait', ms: 1500 }); draw(); } }, '+ Wachttijd'),
+      h('button', { class: 'btn sm', onclick: () => { cfg.steps.push({ t: 'type', text: '' }); draw(); } }, '+ Tekst typen'),
+      h('button', { class: 'btn sm', onclick: () => { cfg.steps.push({ t: 'key', key: 'Enter' }); draw(); } }, '+ Toets'),
+      h('button', { class: 'btn sm', onclick: () => { cfg.steps.push({ t: 'fill', selector: '', text: '' }); draw(); } }, '+ Veld invullen')),
+    h('p', { class: 'hint', html: 'Alle stappen na “Open website” gebeuren in dát tabblad, tot de volgende “Open website”.<br>' +
+      '<b>Slimme invulvelden:</b> <code>{vraag:Zoekterm}</code> vraagt bij het klikken om een waarde, <code>{datum}</code> en <code>{tijd}</code> worden automatisch ingevuld.<br>' +
+      '<b>CSS-selector:</b> rechtsklik op een veld in de website → Inspecteren → rechtsklik op de gemarkeerde regel → Kopiëren → Selector kopiëren.<br>' +
+      'Toetsaanslagen, klikken en invullen werken met de extensie <b>Streamline Helper</b>; zonder extensie opent de knop alleen de websites.' })));
+}
+async function runAction(item) {
+  const steps = clone(item.config.steps || []);
+  if (!steps.length) return toast('Deze actieknop heeft nog geen stappen');
+  const asks = new Map();
+  const scan = s => String(s ?? '').replace(/\{vraag:([^}]+)\}/gi, (_, l) => { asks.set(l, null); return _; });
+  steps.forEach(st => Object.values(st).forEach(scan));
+  for (const l of asks.keys()) { const v = await ask(item.config.label || 'Actie', l); if (v == null) return; asks.set(l, v); }
+  const fill = s => typeof s === 'string' ? fmtVars(s.replace(/\{vraag:([^}]+)\}/gi, (_, l) => asks.get(l) ?? '')) : s;
+  for (const st of steps) for (const k in st) st[k] = fill(st[k]);
+  for (const st of steps) if (st.t === 'open') st.url = normUrl(st.url);
+  const helper = document.documentElement.dataset.streamlineHelper;
+  if (helper) {
+    const cp = steps.filter(s => s.t === 'copy').at(-1);
+    if (cp) { try { await navigator.clipboard.writeText(cp.text || ''); } catch (e) {} }
+    window.postMessage({ type: 'streamline-run', id: uid(), steps: steps.filter(s => s.t !== 'copy') }, '*');
+    toast('Actie gestart…');
+    return;
+  }
+  let blocked = false, copied = '';
+  for (const st of steps) {
+    if (st.t === 'open') { const w = window.open(st.url, '_blank'); if (!w) blocked = true; }
+    if (st.t === 'copy' || ((st.t === 'type' || st.t === 'fill') && !copied && st.text)) copied = st.text;
+  }
+  if (copied) { try { await navigator.clipboard.writeText(copied); } catch (e) { copied = ''; } }
+  const needsHelper = steps.some(s => ['type', 'key', 'click', 'fill', 'waitFor'].includes(s.t));
+  if (blocked) toast('Je browser blokkeerde extra tabbladen: klik op het pop-up-icoon in de adresbalk en kies “Altijd toestaan”.', 6500);
+  else if (needsHelper) toast(copied ? 'Websites geopend. Tekst staat op je klembord (Ctrl+V) — installeer Streamline Helper voor automatisch typen.' : 'Websites geopend. Voor toetsaanslagen is de extensie Streamline Helper nodig.', 6500);
+}
+window.addEventListener('message', e => {
+  if (e.source !== window || e.data?.type !== 'streamline-run-status') return;
+  if (e.data.error) toast('Actie: ' + e.data.error, 5000); else if (e.data.done) toast('Actie klaar');
+});
+reg({
+  type: 'action', name: 'Actieknop', desc: 'Opent meerdere sites en kan typen, klikken, wachten en invullen', icon: 'zap', group: 'basis', card: false,
+  size: { w: 3, h: 3 }, min: { w: 1, h: 1 }, configOnAdd: true, wideConfig: true,
+  defaults: { label: 'Nieuwe actie', sub: '', iconMode: 'icon', icon: 'zap', style: 'accent', layout: 'stack', showLabel: true, steps: [{ t: 'open', url: '' }] },
+  fields: [{ key: 'label', label: 'Naam', type: 'text' }, { key: 'sub', label: 'Onderschrift (optioneel)', type: 'text' }, ...BTN_FIELDS],
+  editor: stepsEditor,
+  render(el, ctx) {
+    const c = ctx.config;
+    const n = (c.steps || []).filter(s => s.t === 'open').length;
+    const firstUrl = (c.steps || []).find(s => s.t === 'open')?.url || '';
+    const b = buttonFace(c, firstUrl, h('span', { class: 'run', html: icon('zap', 11) + (n > 1 ? n + ' sites' : '') }));
+    b.onclick = () => runAction(ctx.item);
+    el.append(b);
+  },
+});
+
+/* ---------- Radio ---------- */
+// Lijst gebaseerd op de zenders van nederland.fm. Het veld "page" verwijst naar de zenderpagina daar.
+const RADIO = [
+  ['NPO Radio 1', 'https://icecast.omroep.nl/radio1-bb-mp3', 'radio1'],
+  ['NPO Radio 2', 'https://icecast.omroep.nl/radio2-bb-mp3', 'radio2'],
+  ['NPO 3FM', 'https://icecast.omroep.nl/3fm-bb-mp3', '3fm'],
+  ['NPO Klassiek', 'https://icecast.omroep.nl/radio4-bb-mp3', 'radio4'],
+  ['NPO Radio 5', 'https://icecast.omroep.nl/radio5-bb-mp3', 'radio5'],
+  ['FunX', 'https://icecast.omroep.nl/funx-bb-mp3', 'funx'],
+  ['Radio 538', 'https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO538.mp3', 'radio538'],
+  ['Qmusic', 'https://stream.qmusic.nl/qmusic/mp3', 'q-music'],
+  ['Qmusic Non-Stop', 'https://stream.qmusic.nl/nonstop/mp3', 'qmusicnonstop'],
+  ['Qmusic Foute Uur', 'https://stream.qmusic.nl/fouteuur/mp3', 'qmusichetfouteuur'],
+  ['Sky Radio', 'https://playerservices.streamtheworld.com/api/livestream-redirect/SKYRADIO.mp3', 'skyradio'],
+  ['Radio 10', 'https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO10.mp3', 'radio10'],
+  ['Radio Veronica', 'https://playerservices.streamtheworld.com/api/livestream-redirect/VERONICA.mp3', 'veronicafm'],
+  ['BNR Nieuwsradio', 'https://playerservices.streamtheworld.com/api/livestream-redirect/BNR_NIEUWSRADIO.mp3', 'bnr'],
+  ['100%NL', 'https://stream.100p.nl/100pctnl.mp3', '100pnl'],
+  ['SLAM!', 'https://stream.slam.nl/slam_mp3', 'slamfm'],
+  ['JOE', 'https://stream.joe.nl/joe/mp3', 'joe'],
+  ['KINK', 'https://playerservices.streamtheworld.com/api/livestream-redirect/KINK.mp3', 'kink'],
+  ['Arrow Classic Rock', 'https://stream.gal.io/arrow', 'arrowclassicrock'],
+  ['Radio Decibel', 'https://playerservices.streamtheworld.com/api/livestream-redirect/DECIBEL.mp3', 'decibel'],
+  ['Sublime', 'https://playerservices.streamtheworld.com/api/livestream-redirect/SUBLIME.mp3', 'sublimefm'],
+  ['Radio Noordzee', 'https://playerservices.streamtheworld.com/api/livestream-redirect/RADIONOORDZEE.mp3', 'radionoordzee'],
+].map(([name, url, page]) => ({ name, url, page }));
+const AUDIO = new Map();
+function radioState(item) {
+  let st = AUDIO.get(item.id);
+  if (!st) {
+    const audio = new Audio(); audio.preload = 'none';
+    st = { audio, status: 'stil' };
+    const upd = s => { st.status = s; radioRefresh(item); };
+    audio.addEventListener('playing', () => upd('speelt'));
+    audio.addEventListener('waiting', () => upd('laden'));
+    audio.addEventListener('pause', () => upd('stil'));
+    audio.addEventListener('error', () => { if (audio.src) upd('fout'); });
+    AUDIO.set(item.id, st);
+  }
+  st.audio.volume = (item.data.volume ?? 70) / 100;
+  return st;
+}
+const stations = item => (item.config.stations && item.config.stations.length ? item.config.stations : RADIO);
+function radioRefresh(item) {
+  const el = els.get(item.id); if (!el) return;
+  const st = AUDIO.get(item.id), sta = stations(item)[item.data.idx || 0] || stations(item)[0];
+  const p = el.querySelector('.radio-play'), s = el.querySelector('.radio-status');
+  if (!p || !s) return;
+  p.innerHTML = icon(st?.status === 'speelt' || st?.status === 'laden' ? 'pause' : 'play', 24);
+  s.innerHTML = st?.status === 'speelt' ? '<span class="eq"><i></i><i></i><i></i></span> Live'
+    : st?.status === 'laden' ? 'Verbinden…'
+    : st?.status === 'fout' ? `<span style="color:var(--hi)">Stream werkt niet</span> · <a href="#" class="np">open op nederland.fm</a>` : 'Klik op afspelen';
+  const np = s.querySelector('.np'); if (np) np.onclick = e => { e.preventDefault(); openUrl('https://www.nederland.fm/radio/' + (sta.page || '')); };
+}
+reg({
+  type: 'radio', name: 'Radio', desc: 'Luister naar Nederlandse radiozenders (via nederland.fm)', icon: 'radio', group: 'widgets',
+  size: { w: 6, h: 3 }, min: { w: 3, h: 2 },
+  defaults: { title: '', stations: null },
+  fields: [{ key: 'title', label: 'Kop (optioneel)', type: 'text' }],
+  editor(el, cfg) {
+    let list = clone(cfg.stations && cfg.stations.length ? cfg.stations : RADIO);
+    cfg.stations = list;
+    const box = h('div');
+    const draw = () => {
+      box.innerHTML = '';
+      list.forEach((s, i) => box.append(h('div', { class: 'row', style: { marginBottom: '6px' } },
+        h('input', { class: 'inp', style: { flex: '0 0 34%' }, value: s.name, oninput: e => s.name = e.target.value }),
+        h('input', { class: 'inp grow', value: s.url, placeholder: 'Stream-adres', oninput: e => s.url = e.target.value }),
+        ib('trash', 'Verwijderen', () => { list.splice(i, 1); draw(); }, 'mini'))));
+    };
+    draw();
+    el.append(h('div', { class: 'sect' }, h('h4', {}, 'Zenders'), box,
+      h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: () => { list.push({ name: 'Nieuwe zender', url: '', page: '' }); draw(); } }, '+ Zender'),
+        h('button', { class: 'btn sm', onclick: () => { list.splice(0, list.length, ...clone(RADIO)); draw(); } }, 'Standaardlijst herstellen')),
+      h('p', { class: 'hint' }, 'Werkt een zender niet? Open hem op nederland.fm, en plak het stream-adres hier (te vinden via F12 → Netwerk → “media”).')));
+  },
+  render(el, ctx) {
+    const item = ctx.item, st = radioState(item), list = stations(item);
+    item.data.idx = clamp(item.data.idx || 0, 0, list.length - 1);
+    const play = () => {
+      const s = list[item.data.idx];
+      if (st.status === 'speelt' || st.status === 'laden') { st.audio.pause(); st.audio.removeAttribute('src'); st.audio.load(); st.status = 'stil'; radioRefresh(item); return; }
+      st.audio.src = s.url; st.status = 'laden'; radioRefresh(item);
+      st.audio.play().catch(() => { st.status = 'fout'; radioRefresh(item); });
+    };
+    const pick = i => { const playing = st.status === 'speelt' || st.status === 'laden'; item.data.idx = (i + list.length) % list.length; ctx.save(); if (playing) { st.status = 'stil'; play(); } ctx.rerender(); };
+    const sel = h('select', { class: 'inp', style: { padding: '6px 10px' }, value: String(item.data.idx), onchange: e => pick(+e.target.value) }, list.map((s, i) => h('option', { value: String(i) }, s.name)));
+    el.append(h('div', { class: 'radio' },
+      h('div', { class: 'radio-now' },
+        h('button', { class: 'radio-play', title: 'Afspelen / stoppen', onclick: play }),
+        h('div', { class: 'radio-meta' }, h('b', {}, list[item.data.idx]?.name || '—'), h('small', { class: 'radio-status' })),
+        ib('prev', 'Vorige zender', () => pick(item.data.idx - 1), 'mini'), ib('next', 'Volgende zender', () => pick(item.data.idx + 1), 'mini')),
+      h('div', { class: 'radio-ctrl' }, h('div', { class: 'grow' }, sel),
+        h('span', { html: icon('volume', 16), style: { color: 'var(--muted)' } }),
+        h('input', { type: 'range', min: 0, max: 100, value: item.data.volume ?? 70, style: { width: '90px' }, oninput: e => { item.data.volume = +e.target.value; st.audio.volume = item.data.volume / 100; }, onchange: () => ctx.save() }))));
+    radioRefresh(item);
+  },
+  onDelete(item) { const st = AUDIO.get(item.id); if (st) { st.audio.pause(); st.audio.src = ''; AUDIO.delete(item.id); } },
+});
+
+/* ---------- To do's ---------- */
+const PRIO = { hoog: 0, medium: 1, laag: 2 };
+const PRIO_LABEL = { hoog: 'Hoog', medium: 'Medium', laag: 'Laag' };
+function decodeMimeWords(s) {
+  return s.replace(/\?=\s+=\?/g, '?==?').replace(/=\?([^?]+)\?([BQbq])\?([^?]*)\?=/g, (m, cs, enc, txt) => {
+    try {
+      const bin = enc.toUpperCase() === 'B' ? atob(txt) : txt.replace(/_/g, ' ').replace(/=([0-9A-F]{2})/gi, (_, x) => String.fromCharCode(parseInt(x, 16)));
+      return new TextDecoder(cs).decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+    } catch (e) { return txt; }
+  });
+}
+async function titlesFromDrop(dt) {
+  const out = [];
+  for (const f of [...(dt.files || [])]) {
+    const n = f.name || '';
+    if (/\.eml$/i.test(n)) {
+      const head = (await f.slice(0, 64000).text()).split(/\r?\n\r?\n/)[0].replace(/\r?\n[ \t]+/g, ' ');
+      const m = /^Subject:\s*(.*)$/im.exec(head);
+      out.push(m ? decodeMimeWords(m[1]).trim() : n.replace(/\.eml$/i, ''));
+    } else out.push(n.replace(/\.(msg|eml|txt|url|html?)$/i, ''));
+  }
+  if (!out.length) {
+    const t = dt.getData('text/plain') || dt.getData('text/uri-list') || '';
+    const line = t.split(/\r?\n/).map(s => s.trim()).find(Boolean);
+    if (line) out.push(line);
+  }
+  return out.map(s => s.slice(0, 240)).filter(Boolean);
+}
+reg({
+  type: 'todo', name: "To do's", desc: 'Taken met prioriteit en herinnering. Sleep een e-mail erin om er een taak van te maken', icon: 'checksquare', group: 'widgets',
+  size: { w: 7, h: 9 }, min: { w: 3, h: 4 },
+  defaults: { title: "To do's", defaultPrio: 'medium', showDone: true },
+  fields: [
+    { key: 'title', label: 'Kop', type: 'text' },
+    { key: 'defaultPrio', label: 'Standaard prioriteit', type: 'seg', options: [['hoog', 'Hoog'], ['medium', 'Medium'], ['laag', 'Laag']] },
+    { key: 'showDone', label: 'Afgevinkte taken blijven zichtbaar (onderaan)', type: 'checkbox' },
+  ],
+  render(el, ctx) {
+    const item = ctx.item, d = item.data; d.items = d.items || [];
+    let prio = ctx.config.defaultPrio || 'medium';
+    const inp = h('input', { class: 'inp grow', placeholder: 'Nieuwe to-do… (of sleep een e-mail hierheen)' });
+    const pr = h('div', { class: 'prio', title: 'Prioriteit' });
+    const drawPr = () => { pr.innerHTML = ''; for (const p of ['hoog', 'medium', 'laag']) pr.append(h('button', { class: prio === p ? 'on' : '', title: PRIO_LABEL[p], onclick: () => { prio = p; drawPr(); } }, h('i', { class: 'pc-' + p }))); };
+    drawPr();
+    const add = (text, p = prio) => { if (!text) return; d.items.push({ id: uid(), text, prio: p, done: false, created: Date.now() }); ctx.save(); drawList(); };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { add(inp.value.trim()); inp.value = ''; } });
+    const list = h('div', { class: 'todo-list' });
+    const foot = h('div', { class: 'todo-foot' });
+    const drawList = () => {
+      list.innerHTML = '';
+      const items = d.items.filter(t => ctx.config.showDone !== false || !t.done)
+        .sort((a, b) => (a.done - b.done) || (PRIO[a.prio] - PRIO[b.prio]) || (a.created - b.created));
+      for (const t of items) {
+        const tt = h('div', { class: 'tt', title: 'Dubbelklik om te bewerken' }, t.text);
+        tt.ondblclick = () => { tt.contentEditable = 'true'; tt.focus(); document.getSelection().selectAllChildren(tt); };
+        tt.onblur = () => { if (tt.isContentEditable) { tt.contentEditable = 'false'; const v = tt.textContent.trim(); if (v) { t.text = v; ctx.save(); } else tt.textContent = t.text; } };
+        tt.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); tt.blur(); } if (e.key === 'Escape') { tt.textContent = t.text; tt.blur(); } };
+        const bell = h('button', { class: 'mini' + (t.remindAt ? ' on' : ''), title: 'Herinnering', html: icon('bell', 15) });
+        bell.onclick = () => ctx.remind(bell, t.remindAt, ts => { t.remindAt = ts; t.reminded = false; ctx.save(); drawList(); });
+        list.append(h('div', { class: 'todo' + (t.done ? ' done' : '') },
+          h('span', { class: 'bar pc-' + t.prio }),
+          h('button', { class: 'cb', title: t.done ? 'Niet gedaan' : 'Gedaan', html: icon('check', 13), onclick: () => { t.done = !t.done; ctx.save(); drawList(); } }),
+          tt,
+          t.remindAt && !t.done ? h('span', { class: 'meta', title: 'Herinnering' }, fmtWhen(t.remindAt)) : null,
+          h('div', { class: 'ta' + (t.remindAt ? ' has' : '') },
+            h('button', { class: 'mini', title: 'Prioriteit wijzigen (nu: ' + PRIO_LABEL[t.prio] + ')', onclick: () => { t.prio = { hoog: 'medium', medium: 'laag', laag: 'hoog' }[t.prio]; ctx.save(); drawList(); } }, h('i', { class: 'pc-' + t.prio, style: { width: '10px', height: '10px', borderRadius: '50%', display: 'block' } })),
+            bell,
+            h('button', { class: 'mini', title: 'Verwijderen', html: icon('x', 15), onclick: () => { d.items.splice(d.items.indexOf(t), 1); ctx.save(); drawList(); } }))));
+      }
+      if (!items.length) list.append(h('div', { class: 'empty', html: icon('inbox', 26).replace('class="ic"', 'class="ic" style="margin:0 auto 6px;opacity:.5"') + 'Niets te doen. Typ hierboven of sleep een e-mail uit Outlook hierheen.' }));
+      const open = d.items.filter(t => !t.done).length, done = d.items.length - open;
+      foot.innerHTML = '';
+      foot.append(h('span', {}, `${open} open`), done ? h('button', { class: 'linkbtn', onclick: () => { d.items = d.items.filter(t => !t.done); ctx.save(); drawList(); } }, `${done} afgevinkt wissen`) : '');
+    };
+    drawList();
+    el.append(h('div', { class: 'todo-add' }, inp, pr, h('button', { class: 'iconbtn', title: 'Toevoegen', html: icon('plus', 16), onclick: () => { add(inp.value.trim()); inp.value = ''; } })), list, foot);
+    const card = el.closest('.card') || el;
+    card.addEventListener('dragover', e => { if (editing) return; e.preventDefault(); e.stopPropagation(); card.classList.add('dropping'); });
+    card.addEventListener('dragleave', e => { if (!card.contains(e.relatedTarget)) card.classList.remove('dropping'); });
+    card.addEventListener('drop', async e => {
+      if (editing) return; e.preventDefault(); e.stopPropagation(); card.classList.remove('dropping');
+      const titles = await titlesFromDrop(e.dataTransfer);
+      if (!titles.length) return toast('Ik kon hier geen titel uit halen');
+      titles.forEach(t => d.items.push({ id: uid(), text: t, prio: ctx.config.defaultPrio || 'medium', done: false, created: Date.now(), fromMail: true }));
+      ctx.save(); drawList(); toast(titles.length === 1 ? 'To-do toegevoegd: ' + titles[0] : titles.length + " to do's toegevoegd");
+    });
+  },
+});
+
+/* ---------- Notities (WYSIWYG) ---------- */
+const ALLOWED = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'P', 'BR', 'DIV', 'UL', 'OL', 'LI', 'H3', 'A', 'MARK', 'SPAN']);
+function sanitize(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const walk = node => {
+    for (const c of [...node.childNodes]) {
+      if (c.nodeType === 1) {
+        walk(c);
+        if (!ALLOWED.has(c.tagName)) { c.replaceWith(...c.childNodes); continue; }
+        for (const a of [...c.attributes]) if (!(c.tagName === 'A' && a.name === 'href') && !(a.name === 'class' && /^(chk|ok)$/.test(a.value))) c.removeAttribute(a.name);
+        if (c.tagName === 'A' && !/^(https?:|mailto:)/i.test(c.getAttribute('href') || '')) c.removeAttribute('href');
+      } else if (c.nodeType !== 3) c.remove();
+    }
+  };
+  walk(doc.body); return doc.body.innerHTML;
+}
+const NOTE_TOOLS = [
+  ['bold', 'Vet (Ctrl+B)', () => document.execCommand('bold')],
+  ['italic', 'Cursief (Ctrl+I)', () => document.execCommand('italic')],
+  ['underline', 'Onderstrepen (Ctrl+U)', () => document.execCommand('underline')],
+  ['heading', 'Kop', () => { const b = document.queryCommandValue('formatBlock'); document.execCommand('formatBlock', false, /h3/i.test(b) ? 'div' : 'h3'); }],
+  ['list', 'Opsomming', () => document.execCommand('insertUnorderedList')],
+  ['listol', 'Genummerde lijst', () => document.execCommand('insertOrderedList')],
+  ['checksquare', 'Afvinklijst', () => {
+    document.execCommand('insertUnorderedList');
+    const n = document.getSelection().anchorNode; const ul = (n?.nodeType === 1 ? n : n?.parentElement)?.closest('ul'); if (ul) ul.className = 'chk';
+  }],
+  ['highlight', 'Markeren', () => { const s = document.getSelection(); if (!s.isCollapsed) document.execCommand('insertHTML', false, '<mark>' + esc(s.toString()) + '</mark>'); }],
+  ['link', 'Link (Ctrl+klik opent hem)', async () => {
+    const s = document.getSelection(); const r = s.rangeCount ? s.getRangeAt(0).cloneRange() : null;
+    const url = await ask('Link toevoegen', 'Webadres', 'https://');
+    if (url && r) { s.removeAllRanges(); s.addRange(r); document.execCommand('createLink', false, normUrl(url)); }
+  }],
+  ['eraser', 'Opmaak wissen', () => { document.execCommand('removeFormat'); document.execCommand('formatBlock', false, 'div'); }],
+];
+reg({
+  type: 'notes', name: 'Notities', desc: 'Opgemaakte notities met een herinnering op tijd', icon: 'note', group: 'widgets',
+  size: { w: 7, h: 9 }, min: { w: 3, h: 3 },
+  defaults: { title: 'Notities', newOnTop: true },
+  fields: [{ key: 'title', label: 'Kop', type: 'text' }, { key: 'newOnTop', label: 'Nieuwe notities bovenaan', type: 'checkbox' }],
+  render(el, ctx) {
+    const item = ctx.item, d = item.data; d.notes = d.notes || [];
+    const wrap = h('div', { class: 'notes' });
+    const persist = debounce(() => ctx.save(), 400);
+    const drawNote = n => {
+      const ed = h('div', { class: 'ne', contenteditable: 'true', 'data-ph': 'Schrijf een notitie…', html: n.html || '' });
+      ed.addEventListener('input', () => { n.html = ed.innerHTML; n.updated = Date.now(); persist(); });
+      ed.addEventListener('paste', e => {
+        e.preventDefault();
+        const html = e.clipboardData.getData('text/html');
+        if (html) document.execCommand('insertHTML', false, sanitize(html));
+        else document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+      });
+      ed.addEventListener('click', e => {
+        const a = e.target.closest('a'); if (a && (e.ctrlKey || e.metaKey)) { e.preventDefault(); openUrl(a.href); return; }
+        const li = e.target.closest('ul.chk > li'); if (li && e.offsetX < 22) { li.classList.toggle('ok'); n.html = ed.innerHTML; persist(); }
+      });
+      const tb = h('div', { class: 'nt' }, NOTE_TOOLS.map(([ic, t, fn]) => h('button', { title: t, html: icon(ic, 15), onmousedown: e => e.preventDefault(), onclick: async () => { ed.focus(); await fn(); n.html = ed.innerHTML; persist(); } })));
+      const bell = h('button', { class: 'mini' + (n.remindAt ? ' on' : ''), title: 'Herinnering instellen', html: icon('bell', 15) });
+      bell.onclick = () => ctx.remind(bell, n.remindAt, ts => { n.remindAt = ts; n.reminded = false; ctx.save(); redraw(); });
+      return h('div', { class: 'note' + (n.remindAt && !n.reminded ? ' due' : '') }, tb, ed,
+        h('div', { class: 'nf' },
+          n.remindAt && !n.reminded ? h('span', { class: 'rem', html: icon('bell', 12) + fmtWhen(n.remindAt) }) : null,
+          h('span', { class: 'when' }, new Date(n.updated || n.created).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })),
+          bell,
+          h('button', { class: 'mini', title: 'Notitie verwijderen', html: icon('trash', 15), onclick: async () => {
+            if ((n.html || '').trim() && !(await confirmDlg('Notitie verwijderen?', 'Deze notitie wordt verwijderd.', 'Verwijderen', true))) return;
+            d.notes.splice(d.notes.indexOf(n), 1); ctx.save(); redraw();
+          } })));
+    };
+    const redraw = () => { wrap.innerHTML = ''; d.notes.forEach(n => wrap.append(drawNote(n))); if (!d.notes.length) wrap.append(h('div', { class: 'empty' }, 'Nog geen notities.')); };
+    redraw();
+    el.append(wrap, h('div', { style: { paddingTop: '8px' } }, h('button', { class: 'btn sm', onclick: () => {
+      const n = { id: uid(), html: '', created: Date.now(), updated: Date.now() };
+      ctx.config.newOnTop !== false ? d.notes.unshift(n) : d.notes.push(n); ctx.save(); redraw();
+      const eds = $$('.ne', wrap); (ctx.config.newOnTop !== false ? eds[0] : eds.at(-1))?.focus();
+    } }, h('span', { html: icon('plus', 14) }), 'Notitie')));
+  },
+});
+
+/* ---------- Afbeeldingen bijsnijden ---------- */
+const CROP = new Map();
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], central = []; let off = 0;
+  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  for (const f of files) {
+    const name = enc.encode(f.name), crc = crc32(f.data), sz = f.data.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+    lh.setUint16(10, time, true); lh.setUint16(12, date, true); lh.setUint32(14, crc, true); lh.setUint32(18, sz, true); lh.setUint32(22, sz, true);
+    lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    parts.push(lh, name, f.data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+    ch.setUint16(12, time, true); ch.setUint16(14, date, true); ch.setUint32(16, crc, true); ch.setUint32(20, sz, true); ch.setUint32(24, sz, true);
+    ch.setUint16(28, name.length, true); ch.setUint32(42, off, true);
+    central.push(ch, name);
+    off += 30 + name.length + sz;
+  }
+  const csize = central.reduce((s, p) => s + p.byteLength, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, csize, true); end.setUint32(16, off, true);
+  return new Blob([...parts, ...central, end], { type: 'application/zip' });
+}
+function cropRect(im, p) {
+  const W = im.w, H = im.h, a = p.w / p.h;
+  let cw, ch; if (W / H > a) { ch = H; cw = H * a; } else { cw = W; ch = W / a; }
+  cw /= im.zoom || 1; ch /= im.zoom || 1;
+  const sx = clamp(im.fx * W - cw / 2, 0, W - cw), sy = clamp(im.fy * H - ch / 2, 0, H - ch);
+  return { sx, sy, sw: cw, sh: ch };
+}
+async function renderCrop(im, p, cfg) {
+  const r = cropRect(im, p);
+  let bmp;
+  try { bmp = await createImageBitmap(im.el, r.sx, r.sy, r.sw, r.sh, { resizeWidth: p.w, resizeHeight: p.h, resizeQuality: 'high' }); } catch (e) { bmp = null; }
+  const cv = h('canvas', { width: p.w, height: p.h }); const cx = cv.getContext('2d');
+  if (cfg.format === 'jpeg') { cx.fillStyle = '#fff'; cx.fillRect(0, 0, p.w, p.h); }
+  if (bmp) cx.drawImage(bmp, 0, 0);
+  else {
+    // terugval: stapsgewijs verkleinen voor scherpe resultaten
+    let src = im.el, sx = r.sx, sy = r.sy, sw = r.sw, sh = r.sh;
+    while (sw / 2 > p.w && sh / 2 > p.h) {
+      const t = h('canvas', { width: Math.round(sw / 2), height: Math.round(sh / 2) }); const tc = t.getContext('2d');
+      tc.imageSmoothingQuality = 'high'; tc.drawImage(src, sx, sy, sw, sh, 0, 0, t.width, t.height);
+      src = t; sx = sy = 0; sw = t.width; sh = t.height;
+    }
+    cx.imageSmoothingQuality = 'high'; cx.drawImage(src, sx, sy, sw, sh, 0, 0, p.w, p.h);
+  }
+  const type = 'image/' + (cfg.format || 'jpeg');
+  return new Promise(res => cv.toBlob(res, type, (cfg.quality ?? 92) / 100));
+}
+const fileBase = n => n.replace(/\.[^.]+$/, '');
+const extOf = f => f === 'jpeg' ? 'jpg' : f;
+function cropName(cfg, im, p) {
+  return (cfg.pattern || '{naam}-{formaat}').replace('{naam}', fileBase(im.name)).replace('{formaat}', slug(p.name)).replace('{breedte}', p.w).replace('{hoogte}', p.h) + '.' + extOf(cfg.format || 'jpeg');
+}
+reg({
+  type: 'crop', name: 'Bijsnijden', desc: 'Afbeeldingen snel en scherp bijsnijden op vaste formaten met een focuspunt', icon: 'crop', group: 'widgets',
+  size: { w: 14, h: 12 }, min: { w: 6, h: 7 }, wideConfig: true, rebuildOnResize: true,
+  defaults: {
+    title: '', format: 'jpeg', quality: 92, pattern: '{naam}-{formaat}',
+    presets: [
+      { name: 'Social deelbeeld', w: 1200, h: 630 }, { name: 'Vierkant', w: 1080, h: 1080 }, { name: 'Instagram staand', w: 1080, h: 1350 },
+      { name: 'Story', w: 1080, h: 1920 }, { name: 'Website header', w: 1920, h: 600 }, { name: 'Thumbnail', w: 400, h: 400 },
+    ],
+  },
+  fields: [
+    { key: 'title', label: 'Kop (optioneel)', type: 'text' },
+    { key: 'format', label: 'Bestandstype', type: 'seg', options: [['jpeg', 'JPG'], ['png', 'PNG'], ['webp', 'WebP']] },
+    { key: 'quality', label: 'Kwaliteit (JPG/WebP)', type: 'range', min: 60, max: 100, unit: '%' },
+    { key: 'pattern', label: 'Bestandsnaam', type: 'text', hint: 'Gebruik {naam}, {formaat}, {breedte} en {hoogte}.' },
+  ],
+  editor(el, cfg) {
+    cfg.presets = clone(cfg.presets || []);
+    const box = h('div');
+    const draw = () => {
+      box.innerHTML = '';
+      cfg.presets.forEach((p, i) => box.append(h('div', { class: 'row', style: { marginBottom: '6px' } },
+        h('input', { class: 'inp grow', value: p.name, placeholder: 'Naam', oninput: e => p.name = e.target.value }),
+        h('input', { class: 'inp', type: 'number', min: 1, style: { width: '100px' }, value: p.w, oninput: e => p.w = Math.max(1, +e.target.value) }),
+        h('span', {}, '×'),
+        h('input', { class: 'inp', type: 'number', min: 1, style: { width: '100px' }, value: p.h, oninput: e => p.h = Math.max(1, +e.target.value) }),
+        h('span', { class: 'hint', style: { margin: 0 } }, 'px'),
+        ib('trash', 'Verwijderen', () => { cfg.presets.splice(i, 1); draw(); }, 'mini'))));
+    };
+    draw();
+    el.append(h('div', { class: 'sect' }, h('h4', {}, 'Formaten'), box, h('button', { class: 'btn sm', onclick: () => { cfg.presets.push({ name: 'Nieuw formaat', w: 1000, h: 1000 }); draw(); } }, '+ Formaat')));
+  },
+  render(el, ctx) {
+    const item = ctx.item, cfg = ctx.config;
+    const st = CROP.get(item.id) || { imgs: [], cur: 0 }; CROP.set(item.id, st);
+    const presets = cfg.presets?.length ? cfg.presets : [{ name: 'Origineel vierkant', w: 1000, h: 1000 }];
+    const fileInp = h('input', { type: 'file', accept: 'image/*', multiple: true, style: { display: 'none' }, onchange: () => { addFiles(fileInp.files); fileInp.value = ''; } });
+    const addFiles = async files => {
+      const imgs = [...files].filter(f => f.type.startsWith('image/'));
+      if (!imgs.length) return toast('Sleep afbeeldingen (JPG, PNG, WebP…)');
+      for (const f of imgs) {
+        const url = URL.createObjectURL(f);
+        const img = new Image(); img.src = url; await img.decode().catch(() => {});
+        st.imgs.push({ id: uid(), name: f.name, url, el: img, w: img.naturalWidth, h: img.naturalHeight, fx: .5, fy: .5, zoom: 1, preset: st.imgs[st.cur]?.preset ?? 0 });
+      }
+      st.cur = st.imgs.length - imgs.length; draw();
+    };
+    const root = h('div', { class: 'cr' }); el.append(root, fileInp);
+    const card = el.closest('.card') || el;
+    card.addEventListener('dragover', e => { if (editing) return; e.preventDefault(); e.stopPropagation(); card.classList.add('dropping'); });
+    card.addEventListener('dragleave', e => { if (!card.contains(e.relatedTarget)) card.classList.remove('dropping'); });
+    card.addEventListener('drop', e => { if (editing) return; e.preventDefault(); e.stopPropagation(); card.classList.remove('dropping'); addFiles(e.dataTransfer.files); });
+
+    let previewTick = 0;
+    const draw = () => {
+      root.innerHTML = '';
+      if (!st.imgs.length) {
+        root.append(h('div', { class: 'cr-drop', onclick: () => fileInp.click(), html: icon('image', 34) + '<b style="color:var(--ink)">Sleep afbeeldingen hierheen</b><span>of klik om ze te kiezen — meerdere tegelijk kan ook</span><span style="font-size:11.5px">Alles gebeurt op je eigen computer.</span>' }));
+        return;
+      }
+      st.cur = clamp(st.cur, 0, st.imgs.length - 1);
+      const im = st.imgs[st.cur]; im.preset = clamp(im.preset, 0, presets.length - 1);
+      const p = presets[im.preset];
+      // balk
+      const presetSel = h('select', { class: 'inp', value: String(im.preset), onchange: e => { im.preset = +e.target.value; draw(); } }, presets.map((x, i) => h('option', { value: String(i) }, `${x.name} · ${x.w}×${x.h}`)));
+      const zoom = h('input', { type: 'range', min: 1, max: 4, step: .05, value: im.zoom, style: { width: '110px' }, oninput: e => { im.zoom = +e.target.value; overlay(); preview(); } });
+      root.append(h('div', { class: 'cr-bar' }, presetSel,
+        h('button', { class: 'btn sm', title: 'Gebruik dit formaat voor alle afbeeldingen', onclick: () => { st.imgs.forEach(x => x.preset = im.preset); toast('Formaat toegepast op alle afbeeldingen'); } }, 'Op alles toepassen'),
+        h('span', { class: 'cr-info', style: { marginLeft: 'auto' } }, 'Inzoomen'), zoom,
+        h('button', { class: 'btn sm', title: 'Focuspunt terug naar het midden', onclick: () => { im.fx = im.fy = .5; im.zoom = 1; draw(); } }, 'Reset')));
+      // panelen
+      const stage = h('div', { class: 'cr-stage' }); const img = h('img', { src: im.url, alt: im.name, draggable: false });
+      const rect = h('div', { class: 'cr-rect' }), fp = h('div', { class: 'cr-fp' });
+      stage.append(img, rect, fp);
+      const prevCv = h('canvas', { class: 'cr-prev' });
+      const stack = el.clientWidth < 560;
+      root.append(h('div', { class: 'cr-main' + (stack ? ' stack' : '') },
+        h('div', { class: 'cr-pane' }, h('span', { class: 'lab' }, 'Klik voor focuspunt'), stage),
+        h('div', { class: 'cr-pane' }, h('span', { class: 'lab' }, 'Voorbeeld'), prevCv)));
+      const info = h('span', { class: 'cr-info' });
+      const overlay = () => {
+        const dw = img.clientWidth, dh = img.clientHeight; if (!dw) return;
+        const r = cropRect(im, p), k = dw / im.w;
+        Object.assign(rect.style, { left: r.sx * k + 'px', top: r.sy * k + 'px', width: r.sw * k + 'px', height: r.sh * k + 'px' });
+        Object.assign(fp.style, { left: im.fx * dw + 'px', top: im.fy * dh + 'px' });
+        const up = r.sw < p.w - .5;
+        info.innerHTML = `${im.w}×${im.h} → ${p.w}×${p.h}` + (up ? ` · <span class="cr-warn">wordt vergroot (bron te klein)</span>` : '');
+      };
+      const preview = () => {
+        const tick = ++previewTick;
+        requestAnimationFrame(() => {
+          if (tick !== previewTick) return;
+          const pane = prevCv.parentElement; const maxW = pane.clientWidth - 20, maxH = pane.clientHeight - 44;
+          const s = Math.min(maxW / p.w, maxH / p.h, 1); const w = Math.max(1, Math.round(p.w * s)), hh = Math.max(1, Math.round(p.h * s));
+          const dpr = devicePixelRatio || 1; prevCv.width = w * dpr; prevCv.height = hh * dpr; prevCv.style.width = w + 'px'; prevCv.style.height = hh + 'px';
+          const r = cropRect(im, p), c = prevCv.getContext('2d'); c.imageSmoothingQuality = 'high';
+          c.drawImage(im.el, r.sx, r.sy, r.sw, r.sh, 0, 0, prevCv.width, prevCv.height);
+        });
+      };
+      const setFp = e => { const b = img.getBoundingClientRect(); im.fx = clamp((e.clientX - b.left) / b.width, 0, 1); im.fy = clamp((e.clientY - b.top) / b.height, 0, 1); overlay(); preview(); };
+      stage.addEventListener('pointerdown', e => { e.preventDefault(); stage.setPointerCapture(e.pointerId); setFp(e); const mv = ev => setFp(ev); stage.addEventListener('pointermove', mv); stage.addEventListener('pointerup', () => stage.removeEventListener('pointermove', mv), { once: true }); });
+      const fit = () => { const pane = stage.parentElement; img.style.maxWidth = (pane.clientWidth - 16) + 'px'; img.style.maxHeight = (pane.clientHeight - 16) + 'px'; overlay(); preview(); };
+      if (img.complete) requestAnimationFrame(fit); else img.onload = fit;
+      new ResizeObserver(() => fit()).observe(stage.parentElement);
+      // onderbalk
+      const thumbs = h('div', { class: 'cr-thumbs' });
+      st.imgs.forEach((x, i) => thumbs.append(h('button', { class: 'cr-thumb' + (i === st.cur ? ' on' : ''), title: x.name, onclick: () => { st.cur = i; draw(); } },
+        h('img', { src: x.url, alt: '' }),
+        h('span', { class: 'rm', title: 'Verwijderen', onclick: e => { e.stopPropagation(); URL.revokeObjectURL(x.url); st.imgs.splice(i, 1); draw(); } }, '×'))));
+      thumbs.append(h('button', { class: 'cr-add', title: 'Afbeeldingen toevoegen', html: icon('plus', 18), onclick: () => fileInp.click() }));
+      const dl = h('button', { class: 'btn primary', html: icon('download', 16) + 'Download' });
+      dl.onclick = () => popover(dl, [
+        h('button', { class: 'opt', html: icon('image', 15) + 'Deze afbeelding', onclick: () => { closePop(); exportSet([[im, p]]); } }),
+        st.imgs.length > 1 ? h('button', { class: 'opt', html: icon('layers', 15) + `Alle ${st.imgs.length} afbeeldingen (zip)`, onclick: () => { closePop(); exportSet(st.imgs.map(x => [x, presets[clamp(x.preset, 0, presets.length - 1)]])); } }) : null,
+        h('button', { class: 'opt', html: icon('grid', 15) + 'Alles in álle formaten (zip)', onclick: () => { closePop(); exportSet(st.imgs.flatMap(x => presets.map(pp => [x, pp]))); } }),
+        h('hr'),
+        h('button', { class: 'opt', html: icon('trash', 15) + 'Alles leegmaken', onclick: () => { closePop(); st.imgs.forEach(x => URL.revokeObjectURL(x.url)); st.imgs = []; draw(); } }),
+      ]);
+      root.append(h('div', { class: 'cr-foot' }, thumbs, h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' } }, info, dl)));
+    };
+    const exportSet = async pairs => {
+      toast(pairs.length > 1 ? `Bezig met ${pairs.length} bestanden…` : 'Bezig…');
+      const out = [], names = new Set();
+      for (const [im, p] of pairs) {
+        const blob = await renderCrop(im, p, cfg);
+        let n = cropName(cfg, im, p), k = 2; while (names.has(n)) n = n.replace(/(\.\w+)$/, `-${k++}$1`); names.add(n);
+        out.push({ name: n, blob });
+      }
+      if (out.length === 1) return download(out[0].name, out[0].blob);
+      const files = await Promise.all(out.map(async o => ({ name: o.name, data: new Uint8Array(await o.blob.arrayBuffer()) })));
+      download(`bijgesneden-${new Date().toISOString().slice(0, 10)}.zip`, makeZip(files));
+    };
+    draw();
+  },
+});
+
+boot();
+</script>
+</body>
+</html>

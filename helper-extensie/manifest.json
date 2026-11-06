@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Streamline Helper",
+  "version": "1.0.0",
+  "description": "Laat Actieknoppen in Streamline websites openen, wachten, klikken, invullen en toetsaanslagen geven. Werkt volledig lokaal.",
+  "permissions": ["tabs", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    { "matches": ["file:///*"], "js": ["bridge.js"], "run_at": "document_end" }
+  ]
+}
