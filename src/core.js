@@ -5,7 +5,7 @@
    zijn: GitHub (alleen om updates/widgets op te halen, er gaat niets heen),
    radiostreams, en websites/favicons die je zelf in een knop zet.
    ========================================================================== */
-const APP_VERSION = '1.0.2';
+const APP_VERSION = '1.0.3';
 const DEFAULT_REPO = 'MehMienLepke/streamline';
 const SCHEMA = 1;
 const $ = (s, r = document) => r.querySelector(s);
@@ -357,33 +357,79 @@ function computeGeo() {
   const g = S.grid, W = canvas().clientWidth;
   geo = { gap: g.gap, rh: g.rowH, cw: (W - g.gap * (g.cols - 1)) / g.cols };
 }
-function rectOf(it) {
-  const { cw, rh, gap } = geo;
-  return { left: it.x * (cw + gap), top: it.y * (rh + gap), width: it.w * cw + (it.w - 1) * gap, height: it.h * rh + (it.h - 1) * gap };
+/* Elk onderdeel ligt in een 'frame': het paginaraster, of het eigen (kleinere) raster
+   van een vak met ruimte binnenin. Posities blijven altijd in paginavakjes opgeslagen;
+   alleen de weergave wordt omgerekend. Zo blijft alles uitwisselbaar tussen beide modi. */
+const pageFrame = () => ({ ox: 0, oy: 0, x0: 0, y0: 0, cw: geo.cw, rh: geo.rh, gap: geo.gap });
+function rectIn(it, f) {
+  return { left: f.ox + (it.x - f.x0) * (f.cw + f.gap), top: f.oy + (it.y - f.y0) * (f.rh + f.gap),
+    width: it.w * f.cw + (it.w - 1) * f.gap, height: it.h * f.rh + (it.h - 1) * f.gap };
+}
+function rectOf(it) { return rectIn(it, pageFrame()); }
+const boxPad = b => b.config.padding ?? 20;
+const isInsideBox = b => b.type === 'box' && b.config.paddingMode === 'inside';
+function containerOf(it, items) {
+  let best = null;
+  for (const b of items) {
+    if (b.type !== 'box' || b === it || !inside(it, b)) continue;
+    if (it.type === 'box' && b.w * b.h <= it.w * it.h) continue; // even grote vakken bevatten elkaar niet
+    if (!best || b.w * b.h < best.w * best.h) best = b;
+  }
+  return best;
+}
+function subFrame(box, r, gap) {
+  const p = boxPad(box);
+  return { ox: r.left + p, oy: r.top + p, x0: box.x, y0: box.y, gap,
+    cw: Math.max(4, (r.width - 2 * p - gap * (box.w - 1)) / box.w),
+    rh: Math.max(4, (r.height - 2 * p - gap * (box.h - 1)) / box.h) };
+}
+function frameFor(it, items, memo = new Map()) {
+  if (memo.has(it.id)) return memo.get(it.id);
+  memo.set(it.id, pageFrame());
+  const par = containerOf(it, items);
+  let f = pageFrame();
+  if (par) {
+    const pf = frameFor(par, items, memo);
+    f = isInsideBox(par) ? subFrame(par, rectIn(par, pf), pf.gap) : pf;
+  }
+  memo.set(it.id, f);
+  return f;
 }
 function layout() {
   if (!S) return;
   computeGeo();
+  const items = [...S.global, ...currentPage().items], memo = new Map();
   let bottom = 0;
-  for (const it of [...S.global, ...currentPage().items]) {
+  for (const it of items) {
     const el = els.get(it.id); if (!el) continue;
     it.w = clamp(it.w, 1, S.grid.cols); it.x = clamp(it.x, 0, S.grid.cols - it.w);
-    const r = rectOf(it);
-    if (it.type === 'box') { const p = it.config.padding ?? 20; r.left -= p; r.top -= p; r.width += 2 * p; r.height += 2 * p; }
+    const f = frameFor(it, items, memo), r = rectIn(it, f);
+    if (it.type === 'box') {
+      const pad = el.querySelector('.boxpad');
+      if (isInsideBox(it)) {
+        if (pad && editing) { const sf = subFrame(it, r, f.gap); pad.style.backgroundImage = gridImg(sf.cw, sf.rh, sf.gap); pad.style.backgroundSize = `${sf.cw + sf.gap}px ${sf.rh + sf.gap}px`; }
+      } else {
+        const p = boxPad(it); r.left -= p; r.top -= p; r.width += 2 * p; r.height += 2 * p;
+        if (pad) pad.style.backgroundImage = 'none';
+      }
+    }
     Object.assign(el.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
-    bottom = Math.max(bottom, it.y + it.h);
+    bottom = Math.max(bottom, r.top + r.height);
   }
-  const rows = bottom + (editing ? 8 : 1);
-  canvas().style.height = (rows * (geo.rh + geo.gap)) + 'px';
+  canvas().style.height = (bottom + (editing ? 8 : 1) * (geo.rh + geo.gap)) + 'px';
   if (editing) setGridImage();
 }
-function setGridImage() {
+function gridImg(cw, rh, gap) {
   const cs = getComputedStyle(document.documentElement);
   const acc = cs.getPropertyValue('--accent').trim(), line = cs.getPropertyValue('--muted').trim();
-  const { cw, rh, gap } = geo, W = cw + gap, H = rh + gap;
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}'><rect x='.75' y='.75' width='${Math.max(1, cw - 1.5)}' height='${rh - 1.5}' rx='8' fill='${acc}' fill-opacity='.06' stroke='${line}' stroke-opacity='.28' stroke-dasharray='3 3'/></svg>`;
-  canvas().style.setProperty('--gridimg', `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
-  canvas().style.backgroundSize = `${W}px ${H}px`;
+  const W = cw + gap, H = rh + gap;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}'><rect x='.75' y='.75' width='${Math.max(1, cw - 1.5)}' height='${Math.max(1, rh - 1.5)}' rx='8' fill='${acc}' fill-opacity='.06' stroke='${line}' stroke-opacity='.28' stroke-dasharray='3 3'/></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+}
+function setGridImage() {
+  const { cw, rh, gap } = geo;
+  canvas().style.setProperty('--gridimg', gridImg(cw, rh, gap));
+  canvas().style.backgroundSize = `${cw + gap}px ${rh + gap}px`;
 }
 window.addEventListener('resize', debounce(layout, 60));
 
@@ -430,6 +476,7 @@ function initDrag() {
     e.preventDefault();
     pushHistory();
     const sx = e.clientX, sy = e.clientY, o = { x: item.x, y: item.y, w: item.w, h: item.h };
+    const f0 = frameFor(item, [...S.global, ...currentPage().items]);
     const kids = (!resize && item.type === 'box') ? findItem(item.id).list.filter(i => inside(i, item)).map(i => ({ i, x: i.x, y: i.y })) : [];
     const def = WIDGETS[item.type] || {}; const min = def.min || { w: 1, h: 1 }; const max = def.max || { w: S.grid.cols, h: 60 };
     const badge = itemEl.querySelector('.size-badge');
@@ -437,7 +484,7 @@ function initDrag() {
     itemEl.setPointerCapture(e.pointerId);
     let moved = false;
     const move = ev => {
-      const dx = (ev.clientX - sx) / (geo.cw + geo.gap), dy = (ev.clientY - sy) / (geo.rh + geo.gap);
+      const dx = (ev.clientX - sx) / (f0.cw + f0.gap), dy = (ev.clientY - sy) / (f0.rh + f0.gap);
       if (resize) {
         item.w = clamp(Math.round(o.w + dx), min.w, Math.min(max.w, S.grid.cols - item.x));
         item.h = clamp(Math.round(o.h + dy), min.h, max.h);

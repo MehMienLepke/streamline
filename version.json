@@ -1,6 +1,6 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "groot": false,
-  "notes": "Nieuw: Map- of bestandsknop. Opent een map of bestand op je computer of netwerkschijf, of kopieert het pad.",
+  "notes": "Achtergrondvak: kies of de ruimte rond de inhoud buiten of binnen het vak valt. Binnen krijgt het vak een eigen, iets kleiner raster.",
   "file": "streamline.html"
 }

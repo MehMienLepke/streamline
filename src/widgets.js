@@ -49,10 +49,11 @@ reg({
 reg({
   type: 'box', name: 'Achtergrondvak', desc: 'Groepeer widgets op een eigen achtergrond', icon: 'box', group: 'basis', card: false,
   size: { w: 10, h: 8 }, min: { w: 1, h: 1 },
-  defaults: { bg: '', opacity: 60, padding: 20, radiusAuto: true, radius: 24, border: '', borderWidth: 0, shadow: false },
+  defaults: { bg: '', opacity: 60, paddingMode: 'outside', padding: 20, radiusAuto: true, radius: 24, border: '', borderWidth: 0, shadow: false },
   fields: [
-    { key: 'padding', label: 'Ruimte rond de inhoud', type: 'range', min: 0, max: 64, step: 2, unit: 'px',
-      hint: 'Het vak steekt zoveel pixels buiten zijn rastervakjes uit. Zo blijven de widgets erin precies op het raster, uitgelijnd met de rest van je pagina. Laat één lege rij of kolom vrij tussen een vak en wat erbuiten staat.' },
+    { key: 'paddingMode', label: 'Ruimte rond de inhoud', type: 'seg', options: [['outside', 'Buiten het vak'], ['inside', 'Binnen het vak']],
+      hint: 'Buiten: het vak steekt uit rond zijn rastervakjes; de widgets erin blijven precies op het paginaraster. Laat één lege rij of kolom vrij naar de buren. — Binnen: het vak blijft precies op zijn rastervakjes en krijgt een eigen raster dat iets kleiner is. Widgets erin worden dus net iets kleiner, maar het vak zelf lijnt uit met de rest.' },
+    { key: 'padding', label: 'Hoeveel ruimte', type: 'range', min: 0, max: 64, step: 2, unit: 'px' },
     { key: 'bg', label: 'Achtergrondkleur', type: 'color', allowTheme: true },
     { key: 'opacity', label: 'Dekking', type: 'range', min: 0, max: 100, unit: '%' },
     { key: 'radiusAuto', label: 'Hoeken automatisch laten meelopen met de widgets erin', type: 'checkbox' },
@@ -67,6 +68,7 @@ reg({
     const radius = c.radiusAuto !== false ? `calc(var(--r) + ${p}px)` : c.radius + 'px';
     el.style.position = 'relative';
     el.append(
+      c.paddingMode === 'inside' ? h('div', { class: 'boxmask', style: { borderRadius: radius } }) : '',
       h('div', { class: 'boxv', style: {
         background: c.bg ? hexA(c.bg, a) : `color-mix(in srgb, var(--surface) ${Math.round(a * 100)}%, transparent)`,
         borderRadius: radius, border: c.borderWidth ? `${c.borderWidth}px solid ${c.border || 'var(--line)'}` : 'none',

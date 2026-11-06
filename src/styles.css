@@ -214,7 +214,9 @@ input[type=color]{width:42px;height:34px;border:1px solid var(--line);border-rad
 .ttl.mid{align-items:center}
 
 /* box */
-.boxv{width:100%;height:100%}
+.boxv{position:absolute;inset:0}
+.boxmask{position:absolute;inset:0;background:var(--bg);display:none}
+body.editing .boxmask{display:block}
 
 /* todo */
 .todo-add{display:flex;gap:6px;align-items:center;margin-bottom:10px}
@@ -332,3 +334,9 @@ kbd{font:600 11px var(--font);background:var(--surface-2);border:1px solid var(-
 /* vakken: greep en knoppen op de rand, zodat ze niet onder de widgets erin vallen */
 .t-box .grip{left:28px;transform:none;top:-11px}
 .t-box .tools{top:-15px;right:24px}
+/* widgets zonder kop: gelijke ruimte boven en onder */
+.card>.card-body:first-child{padding-top:16px;padding-bottom:16px}
+/* radio past zich aan als het vak laag is (bijv. in een vak met eigen raster) */
+.t-radio .card-body{container-type:size}
+.radio-play{width:auto;height:min(56px,100%);aspect-ratio:1}
+@container (max-height:100px){.radio-ctrl{display:none}}
