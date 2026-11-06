@@ -5,7 +5,7 @@
    zijn: GitHub (alleen om updates/widgets op te halen, er gaat niets heen),
    radiostreams, en websites/favicons die je zelf in een knop zet.
    ========================================================================== */
-const APP_VERSION = '1.0.3';
+const APP_VERSION = '1.0.4';
 const DEFAULT_REPO = 'MehMienLepke/streamline';
 const SCHEMA = 1;
 const $ = (s, r = document) => r.querySelector(s);
@@ -78,6 +78,14 @@ function confirmDlg(title, text, okLabel = 'Ja', danger) {
       foot: [h('button', { class: 'btn', onclick: () => m.close() }, 'Annuleren'),
         h('button', { class: 'btn primary' + (danger ? ' danger' : ''), style: danger ? { background: 'var(--hi)', color: '#fff' } : null, onclick: () => { done = true; m.close(); res(true); } }, okLabel)],
       onClose: () => { if (!done) res(false); } });
+  });
+}
+function choiceDlg(title, text, options) {
+  return new Promise(res => {
+    let done = false;
+    const m = openModal({ title, body: h('p', { style: { margin: '0 0 6px' } }, text),
+      foot: options.map(([v, label, primary]) => h('button', { class: 'btn' + (primary ? ' primary' : ''), onclick: () => { done = true; m.close(); res(v); } }, label)),
+      onClose: () => { if (!done) res(null); } });
   });
 }
 let openPop = null;
@@ -225,6 +233,7 @@ function defaultState(title, preset = 'licht') {
     meta: { title: title || 'Mijn dashboard', created: Date.now(), updated: Date.now(), appVersion: APP_VERSION },
     theme: { preset, auto: false, radius: 22, custom: { ...THEMES[preset] || THEMES.licht } },
     typography: { font: 'Bahnschrift (strak)', color: '', weight: 600 },
+    buttons: { fontSize: 14 },
     grid: { cols: 24, rowH: 36, gap: 14 },
     ui: { panels: {} },
     pages: [home, work], global: [], activePage: home.id,
@@ -251,6 +260,7 @@ function migrate(s) {
   out.meta = { ...d.meta, ...s.meta };
   out.theme = { ...d.theme, ...s.theme, custom: { ...d.theme.custom, ...(s.theme?.custom || {}) } };
   out.typography = { ...d.typography, ...s.typography };
+  out.buttons = { ...d.buttons, ...s.buttons };
   out.grid = { ...d.grid, ...s.grid };
   out.ui = { ...d.ui, ...s.ui, panels: { ...(s.ui?.panels || {}) } };
   out.update = { ...d.update, ...s.update };
@@ -258,7 +268,12 @@ function migrate(s) {
   out.pages = Array.isArray(s.pages) && s.pages.length ? s.pages : d.pages;
   out.global = Array.isArray(s.global) ? s.global : d.global;
   out.plugins = Array.isArray(s.plugins) ? s.plugins : [];
-  for (const it of allItems(out)) { it.config = { ...clone(WIDGETS[it.type]?.defaults || {}), ...(it.config || {}) }; it.data = it.data || {}; }
+  for (const it of allItems(out)) {
+    const c = it.config || {};
+    if (c.layout && !c.labelPos) c.labelPos = c.layout === 'row' ? 'right' : 'bottom'; // oude 'Indeling' omzetten
+    delete c.layout;
+    it.config = { ...clone(WIDGETS[it.type]?.defaults || {}), ...c }; it.data = it.data || {};
+  }
   if (!out.pages.find(p => p.id === out.activePage)) out.activePage = out.pages[0].id;
   out.schema = SCHEMA; out.meta.appVersion = APP_VERSION;
   return out;
@@ -414,10 +429,18 @@ function layout() {
       }
     }
     Object.assign(el.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+    if (WIDGETS[it.type]?.isButton) el.style.setProperty('--btn-fs', btnFontSize(it, items) + 'px');
     bottom = Math.max(bottom, r.top + r.height);
   }
   canvas().style.height = (bottom + (editing ? 8 : 1) * (geo.rh + geo.gap)) + 'px';
   if (editing) setGridImage();
+  requestAnimationFrame(() => $$('.lb', canvas()).forEach(b => window.fitButton && fitButton(b)));
+}
+/* Tekstgrootte van een knop: eigen instelling → instelling van het (binnenste) vak eromheen → algemene instelling */
+function btnFontSize(it, items) {
+  if (it.config.fontSizeOn) return it.config.fontSize || S.buttons.fontSize;
+  for (let b = containerOf(it, items); b; b = containerOf(b, items)) if (b.config.btnFontSizeOn) return b.config.btnFontSize || S.buttons.fontSize;
+  return S.buttons.fontSize;
 }
 function gridImg(cw, rh, gap) {
   const cs = getComputedStyle(document.documentElement);
@@ -686,7 +709,8 @@ function openItemConfig(item) {
       h('option', { value: '' }, '— niet verplaatsen —'), S.pages.filter(p => p.id !== S.activePage).map(p => [h('option', { value: 'move:' + p.id }, 'Verplaats naar ' + p.name), h('option', { value: 'copy:' + p.id }, 'Kopieer naar ' + p.name)])))));
   const m = openModal({ title: (def?.name || item.type) + ' — instellingen', wide: def?.wideConfig, body,
     foot: [h('button', { class: 'btn', onclick: () => m.close() }, 'Annuleren'),
-      h('button', { class: 'btn primary', onclick: () => {
+      h('button', { class: 'btn primary', onclick: async () => {
+        if (def?.beforeSave && (await def.beforeSave(item, cfg)) === false) return;
         pushHistory();
         item.config = cfg; item.w = size.w; item.h = size.h;
         if (target) {
@@ -803,29 +827,74 @@ async function checkUpdate(manual) {
 async function installUpdate() {
   const v = remote.info; if (!v) return;
   const name = S.update.htmlName || 'streamline.html';
-  const body = h('div', {},
-    h('p', {}, `Nieuwe versie: `, h('b', {}, v.version), ` (jij hebt ${APP_VERSION}).`),
+  const canWrite = !!(FS.dir && FS.perm);
+  const intro = h('div', {},
+    h('p', {}, 'Nieuwe versie: ', h('b', {}, v.version), ` (jij hebt ${APP_VERSION}).`),
     v.notes ? h('div', { class: 'hint', style: { whiteSpace: 'pre-wrap' } }, v.notes) : null,
-    h('p', { class: 'hint' }, FS.dir && FS.perm
+    h('p', { class: 'hint' }, canWrite
       ? `Ik maak eerst een reservekopie van je huidige versie en je instellingen in de map “backups”. Daarna vervang ik “${name}” in je gekoppelde map en ververs ik de pagina. Je dashboards, notities en to do's blijven gewoon staan.`
       : `Je map is niet gekoppeld, dus ik kan het bestand niet zelf vervangen. Ik download de nieuwe versie; zet die op de plek van je huidige “${name}” en open hem opnieuw.`));
-  const m = openModal({ title: 'Update installeren', body, foot: [h('button', { class: 'btn', onclick: () => m.close() }, 'Later'), h('button', { class: 'btn primary', onclick: async () => {
+  const bar = h('div', { class: 'upd-bar' }, h('i'));
+  const list = h('div');
+  const status = h('div', { class: 'upd-msg' });
+  const progress = h('div', { style: { display: 'none' } }, bar, list, status);
+  const later = h('button', { class: 'btn', onclick: () => m.close() }, 'Later');
+  const go = h('button', { class: 'btn primary' }, 'Installeren');
+  const m = openModal({ title: 'Update installeren', body: [intro, progress], foot: [later, go] });
+  const topBtn = $('#updatebtn');
+  const labels = canWrite
+    ? ['Nieuwe versie ophalen van GitHub', 'Controleren of het bestand klopt', 'Reservekopie van je huidige versie maken', 'Reservekopie van je instellingen maken', 'Nieuwe versie installeren']
+    : ['Nieuwe versie ophalen van GitHub', 'Controleren of het bestand klopt', 'Nieuwe versie downloaden'];
+  const rows = labels.map(l => h('div', { class: 'upd-step' }, h('span', { class: 'st', html: icon('clock', 16) }), h('span', {}, l)));
+  list.append(...rows);
+  const pause = ms => new Promise(r => setTimeout(r, ms));
+  let cur = -1;
+  const step = async (i, fn) => {
+    cur = i;
+    rows[i].className = 'upd-step run'; rows[i].firstChild.innerHTML = '<span class="spin"></span>';
+    const t0 = Date.now(); const out = await fn();
+    await pause(Math.max(0, 450 - (Date.now() - t0))); // even zichtbaar laten, ook als het razendsnel gaat
+    rows[i].className = 'upd-step ok'; rows[i].firstChild.innerHTML = icon('check', 16);
+    bar.firstChild.style.width = Math.round((i + 1) / rows.length * 100) + '%';
+    return out;
+  };
+  go.onclick = async () => {
+    intro.style.display = 'none'; progress.style.display = ''; status.textContent = '';
+    rows.forEach(r => { r.className = 'upd-step'; r.firstChild.innerHTML = icon('clock', 16); }); bar.firstChild.style.width = '0';
+    go.disabled = later.disabled = true; go.innerHTML = '<span class="spin"></span> Bezig met updaten…';
+    topBtn.classList.add('busy'); topBtn.innerHTML = '<span class="spin"></span> Bezig…';
     try {
-      const r = await fetch(rawUrl(v.file || 'streamline.html') + '?t=' + Date.now(), { cache: 'no-store' });
-      const html = await r.text();
-      if (!html.includes('name="streamline-app"')) throw new Error('Het gedownloade bestand is geen Streamline-pagina');
-      if (FS.dir && FS.perm) {
+      const html = await step(0, async () => {
+        const r = await fetch(rawUrl(v.file || 'streamline.html') + '?t=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) throw new Error('GitHub gaf foutcode ' + r.status);
+        return r.text();
+      });
+      await step(1, async () => { if (!html.includes('name="streamline-app"')) throw new Error('Het gedownloade bestand is geen Streamline-pagina'); });
+      if (canWrite) {
         await flush();
         const stamp = new Date().toISOString().slice(0, 10);
-        if (await exists(name)) await writeText(`backups/${name.replace(/\.html$/, '')}-v${APP_VERSION}.html`, await readText(name));
-        await writeJSON(`backups/${FS.file.replace(EXT, '')}-${stamp}${EXT}`, S);
-        await writeText(name, html);
-        toast('Update geïnstalleerd — de pagina wordt ververst');
-        setTimeout(() => location.reload(), 1200);
-      } else { download(name, html, 'text/html'); toast('Nieuwe versie gedownload'); }
-      m.close();
-    } catch (e) { toast('Update mislukt: ' + e.message, 5000); }
-  } }, 'Installeren')] });
+        await step(2, async () => { if (await exists(name)) await writeText(`backups/${name.replace(/\.html$/, '')}-v${APP_VERSION}.html`, await readText(name)); });
+        await step(3, () => writeJSON(`backups/${FS.file.replace(EXT, '')}-${stamp}${EXT}`, S));
+        await step(4, () => writeText(name, html));
+        let n = 3;
+        const tick = () => { status.innerHTML = `${icon('check', 18)}<b>Update geïnstalleerd.</b> De pagina wordt over ${n} seconde${n === 1 ? '' : 'n'} ververst…`; };
+        tick();
+        go.disabled = false; go.textContent = 'Nu verversen'; go.onclick = () => location.reload();
+        later.style.display = 'none';
+        const iv = setInterval(() => { n--; if (n <= 0) { clearInterval(iv); status.innerHTML = '<span class="spin"></span> <b>Verversen…</b>'; location.reload(); } else tick(); }, 1000);
+      } else {
+        await step(2, async () => download(name, html, 'text/html'));
+        status.innerHTML = `${icon('check', 18)}<span><b>Gedownload.</b> Zet het bestand op de plek van je huidige “${esc(name)}” en open het opnieuw.</span>`;
+        go.style.display = 'none'; later.disabled = false; later.textContent = 'Sluiten';
+        topBtn.classList.remove('busy'); topBtn.textContent = 'Update';
+      }
+    } catch (e) {
+      if (cur >= 0) { rows[cur].className = 'upd-step err'; rows[cur].firstChild.innerHTML = icon('alert', 16); }
+      status.innerHTML = `<span style="color:var(--hi)"><b>Update mislukt:</b> ${esc(e.message)}</span><br><span class="hint">Er is niets kapotgegaan; je huidige versie werkt gewoon.</span>`;
+      go.disabled = later.disabled = false; go.textContent = 'Opnieuw proberen'; later.textContent = 'Sluiten';
+      topBtn.classList.remove('busy'); topBtn.textContent = 'Update';
+    }
+  };
 }
 async function loadPlugins() {
   const store = (await IDB.get('plugins')) || {};

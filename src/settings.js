@@ -31,6 +31,12 @@ function tabGeneral(b) {
         h('div', { class: 'field' }, h('label', {}, 'Knoppen'), segCtl([['icons', 'Iconen'], ['labels', 'Namen'], ['both', 'Beide']], nav.config.display, v => setAllNav('display', v))),
         h('p', { class: 'hint' }, 'Tip: bij een verticaal menu maak je het onderdeel smal en hoog (bijv. 2 × 10). Het menu zelf verplaats je net als elke widget.'),
       ] : h('p', { class: 'hint' }, 'Er staat geen paginamenu op je dashboard. Voeg het toe via de repository (Basis → Paginamenu).')),
+    sect('Knoppen',
+      h('div', { class: 'field' }, h('label', {}, `Tekstgrootte van alle knoppen: ${S.buttons.fontSize}px`),
+        h('input', { type: 'range', min: 9, max: 32, value: S.buttons.fontSize,
+          oninput: e => { S.buttons.fontSize = +e.target.value; e.target.previousSibling.textContent = `Tekstgrootte van alle knoppen: ${S.buttons.fontSize}px`; layout(); },
+          onchange: () => setGlobalButtonSize() })),
+      h('p', { class: 'hint' }, 'Een vak of een losse knop kan een eigen tekstgrootte hebben; die gaat dan voor. Bij een wijziging hier vraagt Streamline of je die eigen instellingen ook wilt aanpassen.')),
     sect('Raster',
       h('div', { class: 'field' }, h('label', {}, `Aantal kolommen: ${S.grid.cols}`), h('input', { type: 'range', min: 12, max: 48, step: 2, value: S.grid.cols, onchange: e => { const old = S.grid.cols, nw = +e.target.value; rescaleGrid(old, nw); renderSettings(); } })),
       h('div', { class: 'field' }, h('label', {}, `Rijhoogte: ${S.grid.rowH}px`), h('input', { type: 'range', min: 20, max: 72, step: 2, value: S.grid.rowH, oninput: e => { S.grid.rowH = +e.target.value; e.target.previousSibling.textContent = `Rijhoogte: ${S.grid.rowH}px`; layout(); save(); } })),
@@ -284,4 +290,17 @@ function tabAbout(b) {
       h('div', { class: 'list-row' }, h('span', { html: icon(helper ? 'check' : 'alert', 16) }), h('span', {}, helper ? 'Streamline Helper is actief (v' + helper + ')' : 'Niet gevonden — Actieknoppen kunnen dan alleen websites openen.')),
       h('p', { class: 'hint' }, 'Een browser staat niet toe dat een pagina in andere tabbladen typt. De kleine extensie “Streamline Helper” (in de map helper-extensie) maakt dat mogelijk. Zie LEESMIJ.md voor de installatie.')),
     sect('Sneltoetsen', h('p', { class: 'hint', html: '<kbd>Esc</kbd> sluit vensters of de bewerkmodus · <kbd>Ctrl</kbd>+<kbd>Z</kbd> ongedaan maken in de bewerkmodus · dubbelklik op een onderdeel in de bewerkmodus opent de instellingen.' })));
+}
+
+async function setGlobalButtonSize() {
+  const all = S.pages.flatMap(p => p.items);
+  const own = all.filter(i => (WIDGETS[i.type]?.isButton && i.config.fontSizeOn) || (i.type === 'box' && i.config.btnFontSizeOn));
+  if (own.length) {
+    const nb = own.filter(i => i.type !== 'box').length, nv = own.length - nb;
+    const what = [nb ? `${nb} knop${nb === 1 ? '' : 'pen'}` : '', nv ? `${nv} vak${nv === 1 ? '' : 'ken'}` : ''].filter(Boolean).join(' en ');
+    const pick = await choiceDlg('Eigen instellingen gevonden', `${what[0].toUpperCase() + what.slice(1)} ${nb + nv === 1 ? 'heeft' : 'hebben'} een eigen tekstgrootte. Wil je die ook op ${S.buttons.fontSize} px zetten?`,
+      [['keep', 'Nee, die laten staan'], ['all', 'Ja, alles aanpassen', true]]);
+    if (pick === 'all') { pushHistory(); own.forEach(i => { if (i.type === 'box') i.config.btnFontSizeOn = false; else i.config.fontSizeOn = false; }); toast('Alle knoppen staan nu op ' + S.buttons.fontSize + ' px'); }
+  }
+  save(); layout();
 }

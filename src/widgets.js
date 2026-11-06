@@ -49,7 +49,7 @@ reg({
 reg({
   type: 'box', name: 'Achtergrondvak', desc: 'Groepeer widgets op een eigen achtergrond', icon: 'box', group: 'basis', card: false,
   size: { w: 10, h: 8 }, min: { w: 1, h: 1 },
-  defaults: { bg: '', opacity: 60, paddingMode: 'outside', padding: 20, radiusAuto: true, radius: 24, border: '', borderWidth: 0, shadow: false },
+  defaults: { bg: '', opacity: 60, paddingMode: 'outside', padding: 20, btnFontSizeOn: false, btnFontSize: 14, radiusAuto: true, radius: 24, border: '', borderWidth: 0, shadow: false },
   fields: [
     { key: 'paddingMode', label: 'Ruimte rond de inhoud', type: 'seg', options: [['outside', 'Buiten het vak'], ['inside', 'Binnen het vak']],
       hint: 'Buiten: het vak steekt uit rond zijn rastervakjes; de widgets erin blijven precies op het paginaraster. Laat één lege rij of kolom vrij naar de buren. — Binnen: het vak blijft precies op zijn rastervakjes en krijgt een eigen raster dat iets kleiner is. Widgets erin worden dus net iets kleiner, maar het vak zelf lijnt uit met de rest.' },
@@ -61,7 +61,21 @@ reg({
     { key: 'border', label: 'Randkleur', type: 'color', allowTheme: true },
     { key: 'borderWidth', label: 'Randdikte', type: 'range', min: 0, max: 8, unit: 'px' },
     { key: 'shadow', label: 'Schaduw', type: 'checkbox' },
+    { key: 'btnFontSizeOn', label: 'Eigen tekstgrootte voor de knoppen in dit vak', type: 'checkbox' },
+    { key: 'btnFontSize', label: 'Tekstgrootte knoppen in dit vak', type: 'range', min: 9, max: 32, unit: 'px', showIf: c => c.btnFontSizeOn },
   ],
+  async beforeSave(item, cfg) {
+    if (!cfg.btnFontSizeOn || (item.config.btnFontSizeOn && item.config.btnFontSize === cfg.btnFontSize)) return;
+    const list = findItem(item.id).list || [];
+    const own = list.filter(i => inside(i, item) && ((WIDGETS[i.type]?.isButton && i.config.fontSizeOn) || (i.type === 'box' && i.config.btnFontSizeOn)));
+    if (!own.length) return;
+    const nb = own.filter(i => i.type !== 'box').length, nv = own.length - nb;
+    const what = [nb ? `${nb} knop${nb === 1 ? '' : 'pen'}` : '', nv ? `${nv} vak${nv === 1 ? '' : 'ken'}` : ''].filter(Boolean).join(' en ');
+    const pick = await choiceDlg('Eigen instellingen gevonden', `In dit vak ${nb + nv === 1 ? 'heeft' : 'hebben'} ${what} een eigen tekstgrootte. Wil je die ook op ${cfg.btnFontSize} px zetten?`,
+      [['keep', 'Nee, die laten staan'], ['all', 'Ja, ook die aanpassen', true]]);
+    if (pick === null) return false;
+    if (pick === 'all') own.forEach(i => { if (i.type === 'box') i.config.btnFontSizeOn = false; else i.config.fontSizeOn = false; });
+  },
   render(el, { config: c }) {
     const a = (c.opacity ?? 60) / 100, p = c.padding ?? 20;
     // automatisch: buitenhoek = hoek van de widgets + de ruimte ertussen, zodat de rondingen netjes 'meelopen'
@@ -78,33 +92,68 @@ reg({
 });
 
 /* ---------- Link-knop ---------- */
+const LABEL_FIELDS = [
+  { key: 'labelPos', label: 'Plaats van de naam', type: 'seg', options: [['bottom', 'Onder'], ['top', 'Boven'], ['left', 'Links'], ['right', 'Rechts'], ['center', 'Midden']],
+    hint: '“Midden” zet de naam precies over het icoon. Is de knop te klein voor de tekst, dan blijft de tekst tegen de rand staan en schuift hij deels over het icoon.' },
+  { key: 'showLabel', label: 'Naam tonen', type: 'checkbox' },
+  { key: 'fontSizeOn', label: 'Eigen tekstgrootte voor deze knop', type: 'checkbox', hint: 'Uit = de knop volgt de tekstgrootte van het vak eromheen, of anders de algemene instelling (Instellingen → Algemeen → Knoppen).' },
+  { key: 'fontSize', label: 'Tekstgrootte', type: 'range', min: 9, max: 32, unit: 'px', showIf: c => c.fontSizeOn },
+];
+const STYLE_FIELD = { key: 'style', label: 'Stijl', type: 'seg', options: [['card', 'Kaart'], ['accent', 'Accent'], ['dark', 'Donker'], ['outline', 'Rand']] };
 const BTN_FIELDS = [
   { key: 'iconMode', label: 'Afbeelding', type: 'seg', options: [['icon', 'Icoon'], ['favicon', 'Favicon van website'], ['none', 'Geen']] },
   { key: 'icon', label: 'Icoon', type: 'icon', showIf: c => c.iconMode === 'icon' },
-  { key: 'style', label: 'Stijl', type: 'seg', options: [['card', 'Kaart'], ['accent', 'Accent'], ['dark', 'Donker'], ['outline', 'Rand']] },
-  { key: 'layout', label: 'Indeling', type: 'seg', options: [['stack', 'Onder elkaar'], ['row', 'Naast elkaar']] },
-  { key: 'showLabel', label: 'Naam tonen', type: 'checkbox' },
+  STYLE_FIELD,
+  ...LABEL_FIELDS,
 ];
-function buttonFace(c, url, extra) {
-  const lb = h('button', { class: `lb ${c.style || 'card'} ${c.layout === 'row' ? 'row-layout' : ''}`, title: c.label || url });
+const BTN_DEFAULTS = { style: 'card', labelPos: 'bottom', showLabel: true, fontSizeOn: false, fontSize: 14 };
+
+/* Knoppen schalen mee met hun grootte. Past de tekst niet, dan blijft hij tegen
+   de rand staan (onder/boven/links/rechts) en schuift hij deels over het icoon. */
+const BTN_RO = new ResizeObserver(entries => entries.forEach(e => fitButton(e.target)));
+function fitButton(lb) {
+  if (!lb.isConnected) return;
+  const W = lb.clientWidth, H = lb.clientHeight; if (!W || !H) return;
+  const ic = lb.querySelector('.lbi'), tx = lb.querySelector('.lbx'), t = tx && tx.querySelector('.lbt'), sub = tx && tx.querySelector('.lbs');
+  const m = Math.min(W, H), pad = Math.round(clamp(m * .1, 6, 16));
+  lb.style.padding = pad + 'px'; lb.style.setProperty('--pad', pad + 'px');
+  if (ic) {
+    const sz = Math.round(clamp(m * .4, 18, 64));
+    ic.style.width = ic.style.height = sz + 'px'; ic.style.borderRadius = Math.round(sz * .32) + 'px';
+    ic.style.setProperty('--ics', Math.round(sz * .52) + 'px'); lb.style.gap = Math.round(clamp(sz * .22, 4, 14)) + 'px';
+  }
+  if (!tx) return;
+  lb.classList.remove('tight'); t.style.webkitLineClamp = ''; if (sub) sub.style.display = '';
+  const center = lb.classList.contains('pos-center');
+  if (!center && lb.scrollHeight <= H + 1 && lb.scrollWidth <= W + 1) return;
+  if (!center && ic) lb.classList.add('tight');
+  const avail = H - 2 * pad;
+  if (tx.scrollHeight > avail && sub) sub.style.display = 'none';
+  if (tx.scrollHeight > avail) { const lh = parseFloat(getComputedStyle(t).lineHeight) || 16; t.style.webkitLineClamp = String(Math.max(1, Math.floor(avail / lh))); }
+}
+window.fitButton = fitButton;
+function buttonFace(c, url) {
+  const pos = c.labelPos || (c.layout === 'row' ? 'right' : 'bottom');
+  const lb = h('button', { class: `lb ${c.style || 'card'} pos-${pos}`, title: c.label || url });
   if (c.iconMode !== 'none') {
     const box = h('span', { class: 'lbi' });
     const host = hostOf(url);
     if (c.iconMode === 'favicon' && host) {
-      const img = h('img', { alt: '', src: `https://${hostOf(url) && new URL(normUrl(url)).host}/favicon.ico`, referrerpolicy: 'no-referrer' });
+      const img = h('img', { alt: '', src: `https://${new URL(normUrl(url)).host}/favicon.ico`, referrerpolicy: 'no-referrer' });
       img.onerror = () => { box.innerHTML = icon('globe', 22); };
       box.append(img);
     } else box.innerHTML = icon(c.icon || 'globe', 22);
     lb.append(box);
   }
-  if (c.showLabel !== false) lb.append(h('span', {}, h('span', { class: 'lbt' }, c.label || hostOf(url) || 'Knop'), c.sub ? h('span', { class: 'lbs', style: { display: 'block' } }, c.sub) : null));
-  if (extra) lb.append(extra);
+  if (c.showLabel !== false) lb.append(h('span', { class: 'lbx' }, h('span', { class: 'lbt' }, c.label || hostOf(url) || 'Knop'), c.sub ? h('span', { class: 'lbs' }, c.sub) : null));
+  BTN_RO.observe(lb);
+  requestAnimationFrame(() => fitButton(lb));
   return lb;
 }
 reg({
-  type: 'link', name: 'Link-knop', desc: 'Opent een website in een nieuw tabblad', icon: 'link', group: 'basis', card: false,
+  type: 'link', name: 'Link-knop', desc: 'Opent een website in een nieuw tabblad', icon: 'link', group: 'basis', card: false, isButton: true,
   size: { w: 3, h: 3 }, min: { w: 1, h: 1 }, configOnAdd: true,
-  defaults: { label: 'Nieuwe link', url: '', sub: '', iconMode: 'favicon', icon: 'globe', style: 'card', layout: 'stack', showLabel: true },
+  defaults: { label: 'Nieuwe link', url: '', sub: '', iconMode: 'favicon', icon: 'globe', ...BTN_DEFAULTS },
   fields: [
     { key: 'label', label: 'Naam', type: 'text' },
     { key: 'url', label: 'Webadres', type: 'url', placeholder: 'https://…' },
@@ -131,9 +180,9 @@ function pathToUrl(p) {
 }
 const isFilePath = p => /\.[a-z0-9]{1,6}"?$/i.test(String(p || '').trim()) && !/[\\/]$/.test(String(p || '').trim());
 reg({
-  type: 'localpath', name: 'Map- of bestandsknop', desc: 'Opent een map of bestand op je computer of netwerkschijf', icon: 'folder', group: 'basis', card: false,
+  type: 'localpath', name: 'Map- of bestandsknop', desc: 'Opent een map of bestand op je computer of netwerkschijf', icon: 'folder', group: 'basis', card: false, isButton: true,
   size: { w: 3, h: 3 }, min: { w: 1, h: 1 }, configOnAdd: true,
-  defaults: { label: 'Nieuwe map', path: '', sub: '', action: 'open', iconMode: 'auto', icon: 'folder', style: 'card', layout: 'stack', showLabel: true },
+  defaults: { label: 'Nieuwe map', path: '', sub: '', action: 'open', iconMode: 'auto', icon: 'folder', ...BTN_DEFAULTS },
   fields: [
     { key: 'label', label: 'Naam', type: 'text' },
     { key: 'path', label: 'Pad naar map of bestand', type: 'text', placeholder: 'C:\\Users\\jij\\Documents\\Projecten  of  \\\\server\\gedeeld\\Marketing',
@@ -143,9 +192,8 @@ reg({
     { key: 'sub', label: 'Onderschrift (optioneel)', type: 'text' },
     { key: 'iconMode', label: 'Afbeelding', type: 'seg', options: [['auto', 'Automatisch'], ['icon', 'Zelf kiezen'], ['none', 'Geen']] },
     { key: 'icon', label: 'Icoon', type: 'icon', showIf: c => c.iconMode === 'icon' },
-    { key: 'style', label: 'Stijl', type: 'seg', options: [['card', 'Kaart'], ['accent', 'Accent'], ['dark', 'Donker'], ['outline', 'Rand']] },
-    { key: 'layout', label: 'Indeling', type: 'seg', options: [['stack', 'Onder elkaar'], ['row', 'Naast elkaar']] },
-    { key: 'showLabel', label: 'Naam tonen', type: 'checkbox' },
+    STYLE_FIELD,
+    ...LABEL_FIELDS,
   ],
   render(el, { config: c }) {
     const face = { ...c, iconMode: c.iconMode === 'none' ? 'none' : 'icon', icon: c.iconMode === 'icon' ? c.icon : (isFilePath(c.path) ? 'file' : 'folder') };
@@ -247,9 +295,9 @@ window.addEventListener('message', e => {
   if (e.data.error) toast('Actie: ' + e.data.error, 5000); else if (e.data.done) toast('Actie klaar');
 });
 reg({
-  type: 'action', name: 'Actieknop', desc: 'Opent meerdere sites en kan typen, klikken, wachten en invullen', icon: 'zap', group: 'basis', card: false,
+  type: 'action', name: 'Actieknop', desc: 'Opent meerdere sites en kan typen, klikken, wachten en invullen', icon: 'zap', group: 'basis', card: false, isButton: true,
   size: { w: 3, h: 3 }, min: { w: 1, h: 1 }, configOnAdd: true, wideConfig: true,
-  defaults: { label: 'Nieuwe actie', sub: '', iconMode: 'icon', icon: 'zap', style: 'accent', layout: 'stack', showLabel: true, steps: [{ t: 'open', url: '' }] },
+  defaults: { label: 'Nieuwe actie', sub: '', iconMode: 'icon', icon: 'zap', ...BTN_DEFAULTS, style: 'accent', steps: [{ t: 'open', url: '' }] },
   fields: [{ key: 'label', label: 'Naam', type: 'text' }, { key: 'sub', label: 'Onderschrift (optioneel)', type: 'text' }, ...BTN_FIELDS],
   editor: stepsEditor,
   render(el, ctx) {

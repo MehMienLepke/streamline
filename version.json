@@ -1,6 +1,6 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "groot": false,
-  "notes": "Achtergrondvak: kies of de ruimte rond de inhoud buiten of binnen het vak valt. Binnen krijgt het vak een eigen, iets kleiner raster.",
+  "notes": "Knoppen: naam onder, boven, links, rechts of midden over het icoon; tekstgrootte voor alle knoppen, per vak of per knop; tekst valt niet meer weg in kleine knoppen. Updaten laat nu stap voor stap zien wat er gebeurt.",
   "file": "streamline.html"
 }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="streamline-app" content="1.0.3">
+<meta name="streamline-app" content="1.0.4">
 <!-- Privacy-slot: deze pagina mag alleen GitHub lezen (updates/widgets). Elk ander verzoek om gegevens te versturen wordt door de browser geblokkeerd. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline'; img-src * data: blob:; media-src *; connect-src https://raw.githubusercontent.com; font-src data:; form-action 'none'; base-uri 'none'">
 <title>Streamline</title>
@@ -351,6 +351,45 @@ kbd{font:600 11px var(--font);background:var(--surface-2);border:1px solid var(-
 .radio-play{width:auto;height:min(56px,100%);aspect-ratio:1}
 @container (max-height:100px){.radio-ctrl{display:none}}
 
+/* ---------- knoppen (v1.0.4): naam op 5 plekken, tekst valt nooit weg ---------- */
+.lb{position:relative;--lbbg:var(--surface);gap:10px}
+.lb.accent{--lbbg:var(--accent)}.lb.dark{--lbbg:var(--ink)}.lb.outline{--lbbg:var(--bg)}
+.lb.pos-bottom{flex-direction:column}
+.lb.pos-top{flex-direction:column-reverse}
+.lb.pos-right{flex-direction:row;text-align:left}
+.lb.pos-left{flex-direction:row-reverse;text-align:right}
+.lb.pos-center{flex-direction:column}
+.lb .lbi{position:relative}
+.lb .lbi .ic{width:var(--ics,22px);height:var(--ics,22px)}
+.lb .lbi img{width:var(--ics,26px);height:var(--ics,26px)}
+.lb .lbx{display:flex;flex-direction:column;gap:2px;min-width:0;max-width:100%;flex:0 1 auto}
+.lb .lbt{font-size:var(--btn-fs,14px);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:unset;overflow:hidden;overflow-wrap:break-word;hyphens:auto}
+.lb .lbs{font-size:calc(var(--btn-fs,14px) * .82);display:block}
+.lb.pos-center .lbx{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(100% - 2 * var(--pad,10px));align-items:center;z-index:1}
+.lb.pos-center .lbi,.lb.tight .lbi{opacity:.4}
+.lb.pos-center .lbt,.lb.tight .lbt,.lb.tight .lbs{text-shadow:0 0 3px var(--lbbg),0 0 8px var(--lbbg),0 0 12px var(--lbbg)}
+.lb.tight .lbi{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+.lb.tight .lbx{position:absolute;z-index:1}
+.lb.tight.pos-bottom .lbx{left:var(--pad);right:var(--pad);bottom:var(--pad);align-items:center}
+.lb.tight.pos-top .lbx{left:var(--pad);right:var(--pad);top:var(--pad);align-items:center}
+.lb.tight.pos-right .lbx{right:var(--pad);top:50%;transform:translateY(-50%);max-width:calc(100% - 2 * var(--pad));text-align:right}
+.lb.tight.pos-left .lbx{left:var(--pad);top:50%;transform:translateY(-50%);max-width:calc(100% - 2 * var(--pad));text-align:left}
+
+/* ---------- update-voortgang ---------- */
+.spin{display:inline-block;width:15px;height:15px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.upd-bar{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin:4px 0 12px}
+.upd-bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .35s ease}
+.upd-step{display:flex;gap:10px;align-items:center;padding:7px 0;color:var(--muted);font-size:13.5px}
+.upd-step .st{width:18px;display:grid;place-items:center}
+.upd-step.run{color:var(--ink);font-weight:650}
+.upd-step.ok{color:var(--ink)}.upd-step.ok .st{color:var(--accent)}
+.upd-step.err{color:var(--hi);font-weight:650}
+.upd-msg{margin-top:12px;display:flex;gap:8px;align-items:flex-start;line-height:1.45}
+.upd-msg:empty{display:none}
+.upd-msg>.ic{color:var(--accent);flex:none;margin-top:1px}
+.pill.busy{animation:none;opacity:.85;pointer-events:none}
+
 </style>
 </head>
 <body>
@@ -512,7 +551,7 @@ function icon(name, size){
    zijn: GitHub (alleen om updates/widgets op te halen, er gaat niets heen),
    radiostreams, en websites/favicons die je zelf in een knop zet.
    ========================================================================== */
-const APP_VERSION = '1.0.3';
+const APP_VERSION = '1.0.4';
 const DEFAULT_REPO = 'MehMienLepke/streamline';
 const SCHEMA = 1;
 const $ = (s, r = document) => r.querySelector(s);
@@ -585,6 +624,14 @@ function confirmDlg(title, text, okLabel = 'Ja', danger) {
       foot: [h('button', { class: 'btn', onclick: () => m.close() }, 'Annuleren'),
         h('button', { class: 'btn primary' + (danger ? ' danger' : ''), style: danger ? { background: 'var(--hi)', color: '#fff' } : null, onclick: () => { done = true; m.close(); res(true); } }, okLabel)],
       onClose: () => { if (!done) res(false); } });
+  });
+}
+function choiceDlg(title, text, options) {
+  return new Promise(res => {
+    let done = false;
+    const m = openModal({ title, body: h('p', { style: { margin: '0 0 6px' } }, text),
+      foot: options.map(([v, label, primary]) => h('button', { class: 'btn' + (primary ? ' primary' : ''), onclick: () => { done = true; m.close(); res(v); } }, label)),
+      onClose: () => { if (!done) res(null); } });
   });
 }
 let openPop = null;
@@ -732,6 +779,7 @@ function defaultState(title, preset = 'licht') {
     meta: { title: title || 'Mijn dashboard', created: Date.now(), updated: Date.now(), appVersion: APP_VERSION },
     theme: { preset, auto: false, radius: 22, custom: { ...THEMES[preset] || THEMES.licht } },
     typography: { font: 'Bahnschrift (strak)', color: '', weight: 600 },
+    buttons: { fontSize: 14 },
     grid: { cols: 24, rowH: 36, gap: 14 },
     ui: { panels: {} },
     pages: [home, work], global: [], activePage: home.id,
@@ -758,6 +806,7 @@ function migrate(s) {
   out.meta = { ...d.meta, ...s.meta };
   out.theme = { ...d.theme, ...s.theme, custom: { ...d.theme.custom, ...(s.theme?.custom || {}) } };
   out.typography = { ...d.typography, ...s.typography };
+  out.buttons = { ...d.buttons, ...s.buttons };
   out.grid = { ...d.grid, ...s.grid };
   out.ui = { ...d.ui, ...s.ui, panels: { ...(s.ui?.panels || {}) } };
   out.update = { ...d.update, ...s.update };
@@ -765,7 +814,12 @@ function migrate(s) {
   out.pages = Array.isArray(s.pages) && s.pages.length ? s.pages : d.pages;
   out.global = Array.isArray(s.global) ? s.global : d.global;
   out.plugins = Array.isArray(s.plugins) ? s.plugins : [];
-  for (const it of allItems(out)) { it.config = { ...clone(WIDGETS[it.type]?.defaults || {}), ...(it.config || {}) }; it.data = it.data || {}; }
+  for (const it of allItems(out)) {
+    const c = it.config || {};
+    if (c.layout && !c.labelPos) c.labelPos = c.layout === 'row' ? 'right' : 'bottom'; // oude 'Indeling' omzetten
+    delete c.layout;
+    it.config = { ...clone(WIDGETS[it.type]?.defaults || {}), ...c }; it.data = it.data || {};
+  }
   if (!out.pages.find(p => p.id === out.activePage)) out.activePage = out.pages[0].id;
   out.schema = SCHEMA; out.meta.appVersion = APP_VERSION;
   return out;
@@ -921,10 +975,18 @@ function layout() {
       }
     }
     Object.assign(el.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+    if (WIDGETS[it.type]?.isButton) el.style.setProperty('--btn-fs', btnFontSize(it, items) + 'px');
     bottom = Math.max(bottom, r.top + r.height);
   }
   canvas().style.height = (bottom + (editing ? 8 : 1) * (geo.rh + geo.gap)) + 'px';
   if (editing) setGridImage();
+  requestAnimationFrame(() => $$('.lb', canvas()).forEach(b => window.fitButton && fitButton(b)));
+}
+/* Tekstgrootte van een knop: eigen instelling → instelling van het (binnenste) vak eromheen → algemene instelling */
+function btnFontSize(it, items) {
+  if (it.config.fontSizeOn) return it.config.fontSize || S.buttons.fontSize;
+  for (let b = containerOf(it, items); b; b = containerOf(b, items)) if (b.config.btnFontSizeOn) return b.config.btnFontSize || S.buttons.fontSize;
+  return S.buttons.fontSize;
 }
 function gridImg(cw, rh, gap) {
   const cs = getComputedStyle(document.documentElement);
@@ -1193,7 +1255,8 @@ function openItemConfig(item) {
       h('option', { value: '' }, '— niet verplaatsen —'), S.pages.filter(p => p.id !== S.activePage).map(p => [h('option', { value: 'move:' + p.id }, 'Verplaats naar ' + p.name), h('option', { value: 'copy:' + p.id }, 'Kopieer naar ' + p.name)])))));
   const m = openModal({ title: (def?.name || item.type) + ' — instellingen', wide: def?.wideConfig, body,
     foot: [h('button', { class: 'btn', onclick: () => m.close() }, 'Annuleren'),
-      h('button', { class: 'btn primary', onclick: () => {
+      h('button', { class: 'btn primary', onclick: async () => {
+        if (def?.beforeSave && (await def.beforeSave(item, cfg)) === false) return;
         pushHistory();
         item.config = cfg; item.w = size.w; item.h = size.h;
         if (target) {
@@ -1310,29 +1373,74 @@ async function checkUpdate(manual) {
 async function installUpdate() {
   const v = remote.info; if (!v) return;
   const name = S.update.htmlName || 'streamline.html';
-  const body = h('div', {},
-    h('p', {}, `Nieuwe versie: `, h('b', {}, v.version), ` (jij hebt ${APP_VERSION}).`),
+  const canWrite = !!(FS.dir && FS.perm);
+  const intro = h('div', {},
+    h('p', {}, 'Nieuwe versie: ', h('b', {}, v.version), ` (jij hebt ${APP_VERSION}).`),
     v.notes ? h('div', { class: 'hint', style: { whiteSpace: 'pre-wrap' } }, v.notes) : null,
-    h('p', { class: 'hint' }, FS.dir && FS.perm
+    h('p', { class: 'hint' }, canWrite
       ? `Ik maak eerst een reservekopie van je huidige versie en je instellingen in de map “backups”. Daarna vervang ik “${name}” in je gekoppelde map en ververs ik de pagina. Je dashboards, notities en to do's blijven gewoon staan.`
       : `Je map is niet gekoppeld, dus ik kan het bestand niet zelf vervangen. Ik download de nieuwe versie; zet die op de plek van je huidige “${name}” en open hem opnieuw.`));
-  const m = openModal({ title: 'Update installeren', body, foot: [h('button', { class: 'btn', onclick: () => m.close() }, 'Later'), h('button', { class: 'btn primary', onclick: async () => {
+  const bar = h('div', { class: 'upd-bar' }, h('i'));
+  const list = h('div');
+  const status = h('div', { class: 'upd-msg' });
+  const progress = h('div', { style: { display: 'none' } }, bar, list, status);
+  const later = h('button', { class: 'btn', onclick: () => m.close() }, 'Later');
+  const go = h('button', { class: 'btn primary' }, 'Installeren');
+  const m = openModal({ title: 'Update installeren', body: [intro, progress], foot: [later, go] });
+  const topBtn = $('#updatebtn');
+  const labels = canWrite
+    ? ['Nieuwe versie ophalen van GitHub', 'Controleren of het bestand klopt', 'Reservekopie van je huidige versie maken', 'Reservekopie van je instellingen maken', 'Nieuwe versie installeren']
+    : ['Nieuwe versie ophalen van GitHub', 'Controleren of het bestand klopt', 'Nieuwe versie downloaden'];
+  const rows = labels.map(l => h('div', { class: 'upd-step' }, h('span', { class: 'st', html: icon('clock', 16) }), h('span', {}, l)));
+  list.append(...rows);
+  const pause = ms => new Promise(r => setTimeout(r, ms));
+  let cur = -1;
+  const step = async (i, fn) => {
+    cur = i;
+    rows[i].className = 'upd-step run'; rows[i].firstChild.innerHTML = '<span class="spin"></span>';
+    const t0 = Date.now(); const out = await fn();
+    await pause(Math.max(0, 450 - (Date.now() - t0))); // even zichtbaar laten, ook als het razendsnel gaat
+    rows[i].className = 'upd-step ok'; rows[i].firstChild.innerHTML = icon('check', 16);
+    bar.firstChild.style.width = Math.round((i + 1) / rows.length * 100) + '%';
+    return out;
+  };
+  go.onclick = async () => {
+    intro.style.display = 'none'; progress.style.display = ''; status.textContent = '';
+    rows.forEach(r => { r.className = 'upd-step'; r.firstChild.innerHTML = icon('clock', 16); }); bar.firstChild.style.width = '0';
+    go.disabled = later.disabled = true; go.innerHTML = '<span class="spin"></span> Bezig met updaten…';
+    topBtn.classList.add('busy'); topBtn.innerHTML = '<span class="spin"></span> Bezig…';
     try {
-      const r = await fetch(rawUrl(v.file || 'streamline.html') + '?t=' + Date.now(), { cache: 'no-store' });
-      const html = await r.text();
-      if (!html.includes('name="streamline-app"')) throw new Error('Het gedownloade bestand is geen Streamline-pagina');
-      if (FS.dir && FS.perm) {
+      const html = await step(0, async () => {
+        const r = await fetch(rawUrl(v.file || 'streamline.html') + '?t=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) throw new Error('GitHub gaf foutcode ' + r.status);
+        return r.text();
+      });
+      await step(1, async () => { if (!html.includes('name="streamline-app"')) throw new Error('Het gedownloade bestand is geen Streamline-pagina'); });
+      if (canWrite) {
         await flush();
         const stamp = new Date().toISOString().slice(0, 10);
-        if (await exists(name)) await writeText(`backups/${name.replace(/\.html$/, '')}-v${APP_VERSION}.html`, await readText(name));
-        await writeJSON(`backups/${FS.file.replace(EXT, '')}-${stamp}${EXT}`, S);
-        await writeText(name, html);
-        toast('Update geïnstalleerd — de pagina wordt ververst');
-        setTimeout(() => location.reload(), 1200);
-      } else { download(name, html, 'text/html'); toast('Nieuwe versie gedownload'); }
-      m.close();
-    } catch (e) { toast('Update mislukt: ' + e.message, 5000); }
-  } }, 'Installeren')] });
+        await step(2, async () => { if (await exists(name)) await writeText(`backups/${name.replace(/\.html$/, '')}-v${APP_VERSION}.html`, await readText(name)); });
+        await step(3, () => writeJSON(`backups/${FS.file.replace(EXT, '')}-${stamp}${EXT}`, S));
+        await step(4, () => writeText(name, html));
+        let n = 3;
+        const tick = () => { status.innerHTML = `${icon('check', 18)}<b>Update geïnstalleerd.</b> De pagina wordt over ${n} seconde${n === 1 ? '' : 'n'} ververst…`; };
+        tick();
+        go.disabled = false; go.textContent = 'Nu verversen'; go.onclick = () => location.reload();
+        later.style.display = 'none';
+        const iv = setInterval(() => { n--; if (n <= 0) { clearInterval(iv); status.innerHTML = '<span class="spin"></span> <b>Verversen…</b>'; location.reload(); } else tick(); }, 1000);
+      } else {
+        await step(2, async () => download(name, html, 'text/html'));
+        status.innerHTML = `${icon('check', 18)}<span><b>Gedownload.</b> Zet het bestand op de plek van je huidige “${esc(name)}” en open het opnieuw.</span>`;
+        go.style.display = 'none'; later.disabled = false; later.textContent = 'Sluiten';
+        topBtn.classList.remove('busy'); topBtn.textContent = 'Update';
+      }
+    } catch (e) {
+      if (cur >= 0) { rows[cur].className = 'upd-step err'; rows[cur].firstChild.innerHTML = icon('alert', 16); }
+      status.innerHTML = `<span style="color:var(--hi)"><b>Update mislukt:</b> ${esc(e.message)}</span><br><span class="hint">Er is niets kapotgegaan; je huidige versie werkt gewoon.</span>`;
+      go.disabled = later.disabled = false; go.textContent = 'Opnieuw proberen'; later.textContent = 'Sluiten';
+      topBtn.classList.remove('busy'); topBtn.textContent = 'Update';
+    }
+  };
 }
 async function loadPlugins() {
   const store = (await IDB.get('plugins')) || {};
@@ -1517,6 +1625,12 @@ function tabGeneral(b) {
         h('div', { class: 'field' }, h('label', {}, 'Knoppen'), segCtl([['icons', 'Iconen'], ['labels', 'Namen'], ['both', 'Beide']], nav.config.display, v => setAllNav('display', v))),
         h('p', { class: 'hint' }, 'Tip: bij een verticaal menu maak je het onderdeel smal en hoog (bijv. 2 × 10). Het menu zelf verplaats je net als elke widget.'),
       ] : h('p', { class: 'hint' }, 'Er staat geen paginamenu op je dashboard. Voeg het toe via de repository (Basis → Paginamenu).')),
+    sect('Knoppen',
+      h('div', { class: 'field' }, h('label', {}, `Tekstgrootte van alle knoppen: ${S.buttons.fontSize}px`),
+        h('input', { type: 'range', min: 9, max: 32, value: S.buttons.fontSize,
+          oninput: e => { S.buttons.fontSize = +e.target.value; e.target.previousSibling.textContent = `Tekstgrootte van alle knoppen: ${S.buttons.fontSize}px`; layout(); },
+          onchange: () => setGlobalButtonSize() })),
+      h('p', { class: 'hint' }, 'Een vak of een losse knop kan een eigen tekstgrootte hebben; die gaat dan voor. Bij een wijziging hier vraagt Streamline of je die eigen instellingen ook wilt aanpassen.')),
     sect('Raster',
       h('div', { class: 'field' }, h('label', {}, `Aantal kolommen: ${S.grid.cols}`), h('input', { type: 'range', min: 12, max: 48, step: 2, value: S.grid.cols, onchange: e => { const old = S.grid.cols, nw = +e.target.value; rescaleGrid(old, nw); renderSettings(); } })),
       h('div', { class: 'field' }, h('label', {}, `Rijhoogte: ${S.grid.rowH}px`), h('input', { type: 'range', min: 20, max: 72, step: 2, value: S.grid.rowH, oninput: e => { S.grid.rowH = +e.target.value; e.target.previousSibling.textContent = `Rijhoogte: ${S.grid.rowH}px`; layout(); save(); } })),
@@ -1772,6 +1886,19 @@ function tabAbout(b) {
     sect('Sneltoetsen', h('p', { class: 'hint', html: '<kbd>Esc</kbd> sluit vensters of de bewerkmodus · <kbd>Ctrl</kbd>+<kbd>Z</kbd> ongedaan maken in de bewerkmodus · dubbelklik op een onderdeel in de bewerkmodus opent de instellingen.' })));
 }
 
+async function setGlobalButtonSize() {
+  const all = S.pages.flatMap(p => p.items);
+  const own = all.filter(i => (WIDGETS[i.type]?.isButton && i.config.fontSizeOn) || (i.type === 'box' && i.config.btnFontSizeOn));
+  if (own.length) {
+    const nb = own.filter(i => i.type !== 'box').length, nv = own.length - nb;
+    const what = [nb ? `${nb} knop${nb === 1 ? '' : 'pen'}` : '', nv ? `${nv} vak${nv === 1 ? '' : 'ken'}` : ''].filter(Boolean).join(' en ');
+    const pick = await choiceDlg('Eigen instellingen gevonden', `${what[0].toUpperCase() + what.slice(1)} ${nb + nv === 1 ? 'heeft' : 'hebben'} een eigen tekstgrootte. Wil je die ook op ${S.buttons.fontSize} px zetten?`,
+      [['keep', 'Nee, die laten staan'], ['all', 'Ja, alles aanpassen', true]]);
+    if (pick === 'all') { pushHistory(); own.forEach(i => { if (i.type === 'box') i.config.btnFontSizeOn = false; else i.config.fontSizeOn = false; }); toast('Alle knoppen staan nu op ' + S.buttons.fontSize + ' px'); }
+  }
+  save(); layout();
+}
+
 /* ==========================================================================
    Streamline — ingebouwde widgets
    Elke widget gebruikt dezelfde Streamline.registerWidget()-aanpak als
@@ -1823,7 +1950,7 @@ reg({
 reg({
   type: 'box', name: 'Achtergrondvak', desc: 'Groepeer widgets op een eigen achtergrond', icon: 'box', group: 'basis', card: false,
   size: { w: 10, h: 8 }, min: { w: 1, h: 1 },
-  defaults: { bg: '', opacity: 60, paddingMode: 'outside', padding: 20, radiusAuto: true, radius: 24, border: '', borderWidth: 0, shadow: false },
+  defaults: { bg: '', opacity: 60, paddingMode: 'outside', padding: 20, btnFontSizeOn: false, btnFontSize: 14, radiusAuto: true, radius: 24, border: '', borderWidth: 0, shadow: false },
   fields: [
     { key: 'paddingMode', label: 'Ruimte rond de inhoud', type: 'seg', options: [['outside', 'Buiten het vak'], ['inside', 'Binnen het vak']],
       hint: 'Buiten: het vak steekt uit rond zijn rastervakjes; de widgets erin blijven precies op het paginaraster. Laat één lege rij of kolom vrij naar de buren. — Binnen: het vak blijft precies op zijn rastervakjes en krijgt een eigen raster dat iets kleiner is. Widgets erin worden dus net iets kleiner, maar het vak zelf lijnt uit met de rest.' },
@@ -1835,7 +1962,21 @@ reg({
     { key: 'border', label: 'Randkleur', type: 'color', allowTheme: true },
     { key: 'borderWidth', label: 'Randdikte', type: 'range', min: 0, max: 8, unit: 'px' },
     { key: 'shadow', label: 'Schaduw', type: 'checkbox' },
+    { key: 'btnFontSizeOn', label: 'Eigen tekstgrootte voor de knoppen in dit vak', type: 'checkbox' },
+    { key: 'btnFontSize', label: 'Tekstgrootte knoppen in dit vak', type: 'range', min: 9, max: 32, unit: 'px', showIf: c => c.btnFontSizeOn },
   ],
+  async beforeSave(item, cfg) {
+    if (!cfg.btnFontSizeOn || (item.config.btnFontSizeOn && item.config.btnFontSize === cfg.btnFontSize)) return;
+    const list = findItem(item.id).list || [];
+    const own = list.filter(i => inside(i, item) && ((WIDGETS[i.type]?.isButton && i.config.fontSizeOn) || (i.type === 'box' && i.config.btnFontSizeOn)));
+    if (!own.length) return;
+    const nb = own.filter(i => i.type !== 'box').length, nv = own.length - nb;
+    const what = [nb ? `${nb} knop${nb === 1 ? '' : 'pen'}` : '', nv ? `${nv} vak${nv === 1 ? '' : 'ken'}` : ''].filter(Boolean).join(' en ');
+    const pick = await choiceDlg('Eigen instellingen gevonden', `In dit vak ${nb + nv === 1 ? 'heeft' : 'hebben'} ${what} een eigen tekstgrootte. Wil je die ook op ${cfg.btnFontSize} px zetten?`,
+      [['keep', 'Nee, die laten staan'], ['all', 'Ja, ook die aanpassen', true]]);
+    if (pick === null) return false;
+    if (pick === 'all') own.forEach(i => { if (i.type === 'box') i.config.btnFontSizeOn = false; else i.config.fontSizeOn = false; });
+  },
   render(el, { config: c }) {
     const a = (c.opacity ?? 60) / 100, p = c.padding ?? 20;
     // automatisch: buitenhoek = hoek van de widgets + de ruimte ertussen, zodat de rondingen netjes 'meelopen'
@@ -1852,33 +1993,68 @@ reg({
 });
 
 /* ---------- Link-knop ---------- */
+const LABEL_FIELDS = [
+  { key: 'labelPos', label: 'Plaats van de naam', type: 'seg', options: [['bottom', 'Onder'], ['top', 'Boven'], ['left', 'Links'], ['right', 'Rechts'], ['center', 'Midden']],
+    hint: '“Midden” zet de naam precies over het icoon. Is de knop te klein voor de tekst, dan blijft de tekst tegen de rand staan en schuift hij deels over het icoon.' },
+  { key: 'showLabel', label: 'Naam tonen', type: 'checkbox' },
+  { key: 'fontSizeOn', label: 'Eigen tekstgrootte voor deze knop', type: 'checkbox', hint: 'Uit = de knop volgt de tekstgrootte van het vak eromheen, of anders de algemene instelling (Instellingen → Algemeen → Knoppen).' },
+  { key: 'fontSize', label: 'Tekstgrootte', type: 'range', min: 9, max: 32, unit: 'px', showIf: c => c.fontSizeOn },
+];
+const STYLE_FIELD = { key: 'style', label: 'Stijl', type: 'seg', options: [['card', 'Kaart'], ['accent', 'Accent'], ['dark', 'Donker'], ['outline', 'Rand']] };
 const BTN_FIELDS = [
   { key: 'iconMode', label: 'Afbeelding', type: 'seg', options: [['icon', 'Icoon'], ['favicon', 'Favicon van website'], ['none', 'Geen']] },
   { key: 'icon', label: 'Icoon', type: 'icon', showIf: c => c.iconMode === 'icon' },
-  { key: 'style', label: 'Stijl', type: 'seg', options: [['card', 'Kaart'], ['accent', 'Accent'], ['dark', 'Donker'], ['outline', 'Rand']] },
-  { key: 'layout', label: 'Indeling', type: 'seg', options: [['stack', 'Onder elkaar'], ['row', 'Naast elkaar']] },
-  { key: 'showLabel', label: 'Naam tonen', type: 'checkbox' },
+  STYLE_FIELD,
+  ...LABEL_FIELDS,
 ];
-function buttonFace(c, url, extra) {
-  const lb = h('button', { class: `lb ${c.style || 'card'} ${c.layout === 'row' ? 'row-layout' : ''}`, title: c.label || url });
+const BTN_DEFAULTS = { style: 'card', labelPos: 'bottom', showLabel: true, fontSizeOn: false, fontSize: 14 };
+
+/* Knoppen schalen mee met hun grootte. Past de tekst niet, dan blijft hij tegen
+   de rand staan (onder/boven/links/rechts) en schuift hij deels over het icoon. */
+const BTN_RO = new ResizeObserver(entries => entries.forEach(e => fitButton(e.target)));
+function fitButton(lb) {
+  if (!lb.isConnected) return;
+  const W = lb.clientWidth, H = lb.clientHeight; if (!W || !H) return;
+  const ic = lb.querySelector('.lbi'), tx = lb.querySelector('.lbx'), t = tx && tx.querySelector('.lbt'), sub = tx && tx.querySelector('.lbs');
+  const m = Math.min(W, H), pad = Math.round(clamp(m * .1, 6, 16));
+  lb.style.padding = pad + 'px'; lb.style.setProperty('--pad', pad + 'px');
+  if (ic) {
+    const sz = Math.round(clamp(m * .4, 18, 64));
+    ic.style.width = ic.style.height = sz + 'px'; ic.style.borderRadius = Math.round(sz * .32) + 'px';
+    ic.style.setProperty('--ics', Math.round(sz * .52) + 'px'); lb.style.gap = Math.round(clamp(sz * .22, 4, 14)) + 'px';
+  }
+  if (!tx) return;
+  lb.classList.remove('tight'); t.style.webkitLineClamp = ''; if (sub) sub.style.display = '';
+  const center = lb.classList.contains('pos-center');
+  if (!center && lb.scrollHeight <= H + 1 && lb.scrollWidth <= W + 1) return;
+  if (!center && ic) lb.classList.add('tight');
+  const avail = H - 2 * pad;
+  if (tx.scrollHeight > avail && sub) sub.style.display = 'none';
+  if (tx.scrollHeight > avail) { const lh = parseFloat(getComputedStyle(t).lineHeight) || 16; t.style.webkitLineClamp = String(Math.max(1, Math.floor(avail / lh))); }
+}
+window.fitButton = fitButton;
+function buttonFace(c, url) {
+  const pos = c.labelPos || (c.layout === 'row' ? 'right' : 'bottom');
+  const lb = h('button', { class: `lb ${c.style || 'card'} pos-${pos}`, title: c.label || url });
   if (c.iconMode !== 'none') {
     const box = h('span', { class: 'lbi' });
     const host = hostOf(url);
     if (c.iconMode === 'favicon' && host) {
-      const img = h('img', { alt: '', src: `https://${hostOf(url) && new URL(normUrl(url)).host}/favicon.ico`, referrerpolicy: 'no-referrer' });
+      const img = h('img', { alt: '', src: `https://${new URL(normUrl(url)).host}/favicon.ico`, referrerpolicy: 'no-referrer' });
       img.onerror = () => { box.innerHTML = icon('globe', 22); };
       box.append(img);
     } else box.innerHTML = icon(c.icon || 'globe', 22);
     lb.append(box);
   }
-  if (c.showLabel !== false) lb.append(h('span', {}, h('span', { class: 'lbt' }, c.label || hostOf(url) || 'Knop'), c.sub ? h('span', { class: 'lbs', style: { display: 'block' } }, c.sub) : null));
-  if (extra) lb.append(extra);
+  if (c.showLabel !== false) lb.append(h('span', { class: 'lbx' }, h('span', { class: 'lbt' }, c.label || hostOf(url) || 'Knop'), c.sub ? h('span', { class: 'lbs' }, c.sub) : null));
+  BTN_RO.observe(lb);
+  requestAnimationFrame(() => fitButton(lb));
   return lb;
 }
 reg({
-  type: 'link', name: 'Link-knop', desc: 'Opent een website in een nieuw tabblad', icon: 'link', group: 'basis', card: false,
+  type: 'link', name: 'Link-knop', desc: 'Opent een website in een nieuw tabblad', icon: 'link', group: 'basis', card: false, isButton: true,
   size: { w: 3, h: 3 }, min: { w: 1, h: 1 }, configOnAdd: true,
-  defaults: { label: 'Nieuwe link', url: '', sub: '', iconMode: 'favicon', icon: 'globe', style: 'card', layout: 'stack', showLabel: true },
+  defaults: { label: 'Nieuwe link', url: '', sub: '', iconMode: 'favicon', icon: 'globe', ...BTN_DEFAULTS },
   fields: [
     { key: 'label', label: 'Naam', type: 'text' },
     { key: 'url', label: 'Webadres', type: 'url', placeholder: 'https://…' },
@@ -1905,9 +2081,9 @@ function pathToUrl(p) {
 }
 const isFilePath = p => /\.[a-z0-9]{1,6}"?$/i.test(String(p || '').trim()) && !/[\\/]$/.test(String(p || '').trim());
 reg({
-  type: 'localpath', name: 'Map- of bestandsknop', desc: 'Opent een map of bestand op je computer of netwerkschijf', icon: 'folder', group: 'basis', card: false,
+  type: 'localpath', name: 'Map- of bestandsknop', desc: 'Opent een map of bestand op je computer of netwerkschijf', icon: 'folder', group: 'basis', card: false, isButton: true,
   size: { w: 3, h: 3 }, min: { w: 1, h: 1 }, configOnAdd: true,
-  defaults: { label: 'Nieuwe map', path: '', sub: '', action: 'open', iconMode: 'auto', icon: 'folder', style: 'card', layout: 'stack', showLabel: true },
+  defaults: { label: 'Nieuwe map', path: '', sub: '', action: 'open', iconMode: 'auto', icon: 'folder', ...BTN_DEFAULTS },
   fields: [
     { key: 'label', label: 'Naam', type: 'text' },
     { key: 'path', label: 'Pad naar map of bestand', type: 'text', placeholder: 'C:\\Users\\jij\\Documents\\Projecten  of  \\\\server\\gedeeld\\Marketing',
@@ -1917,9 +2093,8 @@ reg({
     { key: 'sub', label: 'Onderschrift (optioneel)', type: 'text' },
     { key: 'iconMode', label: 'Afbeelding', type: 'seg', options: [['auto', 'Automatisch'], ['icon', 'Zelf kiezen'], ['none', 'Geen']] },
     { key: 'icon', label: 'Icoon', type: 'icon', showIf: c => c.iconMode === 'icon' },
-    { key: 'style', label: 'Stijl', type: 'seg', options: [['card', 'Kaart'], ['accent', 'Accent'], ['dark', 'Donker'], ['outline', 'Rand']] },
-    { key: 'layout', label: 'Indeling', type: 'seg', options: [['stack', 'Onder elkaar'], ['row', 'Naast elkaar']] },
-    { key: 'showLabel', label: 'Naam tonen', type: 'checkbox' },
+    STYLE_FIELD,
+    ...LABEL_FIELDS,
   ],
   render(el, { config: c }) {
     const face = { ...c, iconMode: c.iconMode === 'none' ? 'none' : 'icon', icon: c.iconMode === 'icon' ? c.icon : (isFilePath(c.path) ? 'file' : 'folder') };
@@ -2021,9 +2196,9 @@ window.addEventListener('message', e => {
   if (e.data.error) toast('Actie: ' + e.data.error, 5000); else if (e.data.done) toast('Actie klaar');
 });
 reg({
-  type: 'action', name: 'Actieknop', desc: 'Opent meerdere sites en kan typen, klikken, wachten en invullen', icon: 'zap', group: 'basis', card: false,
+  type: 'action', name: 'Actieknop', desc: 'Opent meerdere sites en kan typen, klikken, wachten en invullen', icon: 'zap', group: 'basis', card: false, isButton: true,
   size: { w: 3, h: 3 }, min: { w: 1, h: 1 }, configOnAdd: true, wideConfig: true,
-  defaults: { label: 'Nieuwe actie', sub: '', iconMode: 'icon', icon: 'zap', style: 'accent', layout: 'stack', showLabel: true, steps: [{ t: 'open', url: '' }] },
+  defaults: { label: 'Nieuwe actie', sub: '', iconMode: 'icon', icon: 'zap', ...BTN_DEFAULTS, style: 'accent', steps: [{ t: 'open', url: '' }] },
   fields: [{ key: 'label', label: 'Naam', type: 'text' }, { key: 'sub', label: 'Onderschrift (optioneel)', type: 'text' }, ...BTN_FIELDS],
   editor: stepsEditor,
   render(el, ctx) {

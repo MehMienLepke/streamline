@@ -340,3 +340,42 @@ kbd{font:600 11px var(--font);background:var(--surface-2);border:1px solid var(-
 .t-radio .card-body{container-type:size}
 .radio-play{width:auto;height:min(56px,100%);aspect-ratio:1}
 @container (max-height:100px){.radio-ctrl{display:none}}
+
+/* ---------- knoppen (v1.0.4): naam op 5 plekken, tekst valt nooit weg ---------- */
+.lb{position:relative;--lbbg:var(--surface);gap:10px}
+.lb.accent{--lbbg:var(--accent)}.lb.dark{--lbbg:var(--ink)}.lb.outline{--lbbg:var(--bg)}
+.lb.pos-bottom{flex-direction:column}
+.lb.pos-top{flex-direction:column-reverse}
+.lb.pos-right{flex-direction:row;text-align:left}
+.lb.pos-left{flex-direction:row-reverse;text-align:right}
+.lb.pos-center{flex-direction:column}
+.lb .lbi{position:relative}
+.lb .lbi .ic{width:var(--ics,22px);height:var(--ics,22px)}
+.lb .lbi img{width:var(--ics,26px);height:var(--ics,26px)}
+.lb .lbx{display:flex;flex-direction:column;gap:2px;min-width:0;max-width:100%;flex:0 1 auto}
+.lb .lbt{font-size:var(--btn-fs,14px);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:unset;overflow:hidden;overflow-wrap:break-word;hyphens:auto}
+.lb .lbs{font-size:calc(var(--btn-fs,14px) * .82);display:block}
+.lb.pos-center .lbx{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(100% - 2 * var(--pad,10px));align-items:center;z-index:1}
+.lb.pos-center .lbi,.lb.tight .lbi{opacity:.4}
+.lb.pos-center .lbt,.lb.tight .lbt,.lb.tight .lbs{text-shadow:0 0 3px var(--lbbg),0 0 8px var(--lbbg),0 0 12px var(--lbbg)}
+.lb.tight .lbi{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+.lb.tight .lbx{position:absolute;z-index:1}
+.lb.tight.pos-bottom .lbx{left:var(--pad);right:var(--pad);bottom:var(--pad);align-items:center}
+.lb.tight.pos-top .lbx{left:var(--pad);right:var(--pad);top:var(--pad);align-items:center}
+.lb.tight.pos-right .lbx{right:var(--pad);top:50%;transform:translateY(-50%);max-width:calc(100% - 2 * var(--pad));text-align:right}
+.lb.tight.pos-left .lbx{left:var(--pad);top:50%;transform:translateY(-50%);max-width:calc(100% - 2 * var(--pad));text-align:left}
+
+/* ---------- update-voortgang ---------- */
+.spin{display:inline-block;width:15px;height:15px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.upd-bar{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin:4px 0 12px}
+.upd-bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .35s ease}
+.upd-step{display:flex;gap:10px;align-items:center;padding:7px 0;color:var(--muted);font-size:13.5px}
+.upd-step .st{width:18px;display:grid;place-items:center}
+.upd-step.run{color:var(--ink);font-weight:650}
+.upd-step.ok{color:var(--ink)}.upd-step.ok .st{color:var(--accent)}
+.upd-step.err{color:var(--hi);font-weight:650}
+.upd-msg{margin-top:12px;display:flex;gap:8px;align-items:flex-start;line-height:1.45}
+.upd-msg:empty{display:none}
+.upd-msg>.ic{color:var(--accent);flex:none;margin-top:1px}
+.pill.busy{animation:none;opacity:.85;pointer-events:none}
