@@ -5,7 +5,7 @@
    zijn: GitHub (alleen om updates/widgets op te halen, er gaat niets heen),
    radiostreams, en websites/favicons die je zelf in een knop zet.
    ========================================================================== */
-const APP_VERSION = '1.0.4';
+const APP_VERSION = '1.0.5';
 const DEFAULT_REPO = 'MehMienLepke/streamline';
 const SCHEMA = 1;
 const $ = (s, r = document) => r.querySelector(s);
@@ -346,7 +346,7 @@ function buildItem(item) {
   el.className = 'item t-' + item.type + (item.locked ? ' locked' : '');
   let host;
   if (!def) {
-    host = h('div', { class: 'card' }, h('div', { class: 'missing', html: icon('alert', 26) + `<b>Widget “${esc(item.type)}” is niet beschikbaar</b><span>Installeer hem via Instellingen → Uitbreidingen. Je inhoud blijft bewaard.</span>` }));
+    host = h('div', { class: 'card' }, h('div', { class: 'missing', html: icon('alert', 26) + `<b>Widget “${esc(item.type)}” bestaat niet (meer) in deze versie</b><span>Verwijder hem via het tandwiel, of installeer hem via Instellingen → Uitbreidingen als het een uitbreiding van GitHub is.</span>` }));
     el.append(host);
   } else if (def.card === false) {
     host = h('div', { class: 'card flat' }); el.append(host);

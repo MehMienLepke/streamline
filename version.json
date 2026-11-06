@@ -1,6 +1,6 @@
 {
-  "version": "1.0.4",
+  "version": "1.0.5",
   "groot": false,
-  "notes": "Knoppen: naam onder, boven, links, rechts of midden over het icoon; tekstgrootte voor alle knoppen, per vak of per knop; tekst valt niet meer weg in kleine knoppen. Updaten laat nu stap voor stap zien wat er gebeurt.",
+  "notes": "De Map- of bestandsknop is verwijderd. Had je er een geplaatst, dan zie je op die plek een melding; je kunt hem in de bewerkmodus verwijderen.",
   "file": "streamline.html"
 }
