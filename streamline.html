@@ -30,12 +30,12 @@ button{cursor:pointer}
 ::selection{background:var(--accent-soft)}
 
 /* ---------- top bar ---------- */
-#topbar{display:flex;align-items:center;gap:16px;padding:22px 32px 14px;position:relative;z-index:40}
-.brand{display:flex;align-items:center;gap:14px;min-width:0}
-.brand-mark{width:40px;height:40px;color:var(--accent);flex:none}
-.brand-name{font-family:var(--font-display);font-weight:600;font-size:27px;letter-spacing:.01em;line-height:1}
-.brand-sub{font-family:var(--font-display);font-size:27px;line-height:1;color:var(--muted);font-weight:300;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.brand-sub:before{content:"/";margin:0 12px 0 2px;opacity:.45}
+#topbar{display:flex;align-items:center;gap:16px;padding:18px 32px 12px;position:relative;z-index:40}
+.brand{display:flex;align-items:center;gap:8px;min-width:0}
+.brand-mark{width:22px;height:22px;color:var(--accent);flex:none}
+.brand-name{font-family:var(--font-display);font-weight:600;font-size:15px;letter-spacing:.02em;line-height:1}
+.brand-sub{font-family:var(--font-display);font-size:15px;line-height:1;color:var(--muted);font-weight:300;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand-sub:before{content:"/";margin:0 7px 0 1px;opacity:.45}
 .top-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
 .round{width:46px;height:46px;border-radius:50%;border:0;background:var(--surface);display:grid;place-items:center;box-shadow:var(--shadow);transition:transform .15s,background .15s}
 .round:hover{transform:translateY(-1px)}
@@ -57,10 +57,14 @@ body.editing .edit-only{display:inline-flex!important}
 /* ---------- canvas & grid ---------- */
 #canvas{position:relative;margin:6px 32px 48px;min-height:calc(100vh - 140px)}
 body.editing #canvas{background-image:var(--gridimg);background-repeat:repeat;border-radius:var(--r-sm)}
-.item{position:absolute;transition:left .14s ease,top .14s ease,width .14s ease,height .14s ease,box-shadow .2s;z-index:3}
-.item.t-box{z-index:1}
-.item.t-title{z-index:2}
-.item.dragging{transition:none;z-index:30!important;cursor:grabbing}
+/* Lagen: een onderdeel maakt zelf geen eigen laag, zodat de greep en knoppen van een vak
+   altijd bóven alle widgets liggen, terwijl het vak zelf altijd onderop ligt. */
+.item{position:absolute;transition:left .14s ease,top .14s ease,width .14s ease,height .14s ease,box-shadow .2s}
+.item>.card{z-index:3}
+.item.t-title>.card{z-index:2}
+.item.t-box>.card{z-index:1}
+.item.dragging{transition:none;cursor:grabbing}
+.item.dragging:not(.t-box)>.card,.item.resizing:not(.t-box)>.card{z-index:30}
 .item.dragging .card{box-shadow:var(--shadow-lg)}
 .card{width:100%;height:100%;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;position:relative;display:flex;flex-direction:column}
 .card.flat{background:transparent;box-shadow:none;border-radius:0;overflow:visible}
@@ -71,23 +75,26 @@ body.editing #canvas{background-image:var(--gridimg);background-repeat:repeat;bo
 /* edit chrome */
 .chrome{display:none}
 body.editing .chrome{display:block}
-.shield{position:absolute;inset:0;z-index:5;cursor:grab;border-radius:var(--r)}
+.shield{position:absolute;inset:0;z-index:4;cursor:grab;border-radius:var(--r)}
 body.editing .item:not(.locked) .card{outline:1.5px dashed color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:3px}
 body.editing .item.locked .card{outline:1.5px solid color-mix(in srgb,var(--muted) 40%,transparent);outline-offset:3px}
 .item.locked .shield{cursor:not-allowed}
-.grip{position:absolute;top:-11px;left:50%;transform:translateX(-50%);z-index:8;height:22px;padding:0 12px;border-radius:999px;background:var(--ink);color:var(--bg);display:flex;align-items:center;cursor:grab;box-shadow:var(--shadow)}
+.grip{position:absolute;top:-11px;left:50%;transform:translateX(-50%);height:22px;padding:0 12px;border-radius:999px;background:var(--ink);color:var(--bg);display:flex;align-items:center;cursor:grab;box-shadow:var(--shadow);z-index:40}
 .grip span{display:block;width:26px;height:4px;border-top:2px solid currentColor;border-bottom:2px solid currentColor;opacity:.85;height:7px}
 .item.locked .grip{background:var(--muted);cursor:not-allowed}
-.tools{position:absolute;top:8px;right:8px;z-index:9;display:flex;gap:4px;opacity:0;transition:opacity .15s}
+.tools{position:absolute;top:8px;right:8px;z-index:41;display:flex;gap:4px;opacity:0;transition:opacity .15s}
 .item:hover .tools,.item.locked .tools{opacity:1}
-.item:hover{z-index:20}
+.item.t-box .shield{z-index:1}
+.item.dragging:not(.t-box) .shield{z-index:31}
+.boxpad{position:absolute;border:1.5px dashed color-mix(in srgb,var(--accent) 45%,transparent);border-radius:calc(var(--r-sm) * .6);pointer-events:none;display:none}
+body.editing .boxpad{display:block}
 .tools button{width:30px;height:30px;border-radius:50%;border:0;background:var(--surface);color:var(--ink);display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.14)}
 .tools button:hover{background:var(--accent);color:var(--accent-ink)}
 .tools button.lock-on{background:var(--ink);color:var(--bg)}
 .item.locked .tools .nl{display:none}
-.resize{position:absolute;right:-6px;bottom:-6px;width:22px;height:22px;z-index:9;cursor:nwse-resize;border-radius:50%;background:var(--accent);border:3px solid var(--surface);box-shadow:var(--shadow)}
+.resize{position:absolute;right:-6px;bottom:-6px;width:22px;height:22px;z-index:40;cursor:nwse-resize;border-radius:50%;background:var(--accent);border:3px solid var(--surface);box-shadow:var(--shadow)}
 .item.locked .resize{display:none}
-.size-badge{position:absolute;left:10px;bottom:10px;z-index:9;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--ink);color:var(--bg);opacity:0;transition:opacity .15s}
+.size-badge{position:absolute;left:10px;bottom:10px;z-index:42;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--ink);color:var(--bg);opacity:0;transition:opacity .15s}
 .item.dragging .size-badge,.item.resizing .size-badge{opacity:1}
 .item.resizing{transition:none}
 
@@ -332,6 +339,9 @@ kbd{font:600 11px var(--font);background:var(--surface-2);border:1px solid var(-
 .t-nav .card.flat:has(.nav.v){align-items:stretch}
 .nav:not(.v){width:fit-content;max-width:100%;height:min(100%,58px)}
 .nav.v{height:100%;width:100%}
+/* vakken: greep en knoppen op de rand, zodat ze niet onder de widgets erin vallen */
+.t-box .grip{left:28px;transform:none;top:-11px}
+.t-box .tools{top:-15px;right:24px}
 
 </style>
 </head>
@@ -858,6 +868,7 @@ function layout() {
     const el = els.get(it.id); if (!el) continue;
     it.w = clamp(it.w, 1, S.grid.cols); it.x = clamp(it.x, 0, S.grid.cols - it.w);
     const r = rectOf(it);
+    if (it.type === 'box') { const p = it.config.padding ?? 20; r.left -= p; r.top -= p; r.width += 2 * p; r.height += 2 * p; }
     Object.assign(el.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
     bottom = Math.max(bottom, it.y + it.h);
   }
@@ -918,6 +929,7 @@ function initDrag() {
     e.preventDefault();
     pushHistory();
     const sx = e.clientX, sy = e.clientY, o = { x: item.x, y: item.y, w: item.w, h: item.h };
+    const kids = (!resize && item.type === 'box') ? findItem(item.id).list.filter(i => inside(i, item)).map(i => ({ i, x: i.x, y: i.y })) : [];
     const def = WIDGETS[item.type] || {}; const min = def.min || { w: 1, h: 1 }; const max = def.max || { w: S.grid.cols, h: 60 };
     const badge = itemEl.querySelector('.size-badge');
     itemEl.classList.add(resize ? 'resizing' : 'dragging');
@@ -932,6 +944,7 @@ function initDrag() {
       } else {
         item.x = clamp(Math.round(o.x + dx), 0, S.grid.cols - item.w);
         item.y = Math.max(0, Math.round(o.y + dy));
+        for (const k of kids) { k.i.x = k.x + item.x - o.x; k.i.y = k.y + item.y - o.y; }
         badge.textContent = `kolom ${item.x + 1} · rij ${item.y + 1}`;
       }
       moved = true; layout();
@@ -1755,21 +1768,29 @@ reg({
 reg({
   type: 'box', name: 'Achtergrondvak', desc: 'Groepeer widgets op een eigen achtergrond', icon: 'box', group: 'basis', card: false,
   size: { w: 10, h: 8 }, min: { w: 1, h: 1 },
-  defaults: { bg: '', opacity: 60, radius: 24, border: '', borderWidth: 0, shadow: false },
+  defaults: { bg: '', opacity: 60, padding: 20, radiusAuto: true, radius: 24, border: '', borderWidth: 0, shadow: false },
   fields: [
+    { key: 'padding', label: 'Ruimte rond de inhoud', type: 'range', min: 0, max: 64, step: 2, unit: 'px',
+      hint: 'Het vak steekt zoveel pixels buiten zijn rastervakjes uit. Zo blijven de widgets erin precies op het raster, uitgelijnd met de rest van je pagina. Laat één lege rij of kolom vrij tussen een vak en wat erbuiten staat.' },
     { key: 'bg', label: 'Achtergrondkleur', type: 'color', allowTheme: true },
     { key: 'opacity', label: 'Dekking', type: 'range', min: 0, max: 100, unit: '%' },
-    { key: 'radius', label: 'Afronding hoeken', type: 'range', min: 0, max: 48, unit: 'px' },
+    { key: 'radiusAuto', label: 'Hoeken automatisch laten meelopen met de widgets erin', type: 'checkbox' },
+    { key: 'radius', label: 'Afronding hoeken', type: 'range', min: 0, max: 64, unit: 'px', showIf: c => !c.radiusAuto },
     { key: 'border', label: 'Randkleur', type: 'color', allowTheme: true },
     { key: 'borderWidth', label: 'Randdikte', type: 'range', min: 0, max: 8, unit: 'px' },
     { key: 'shadow', label: 'Schaduw', type: 'checkbox' },
   ],
   render(el, { config: c }) {
-    const a = (c.opacity ?? 60) / 100;
-    el.append(h('div', { class: 'boxv', style: {
-      background: c.bg ? hexA(c.bg, a) : `color-mix(in srgb, var(--surface) ${Math.round(a * 100)}%, transparent)`,
-      borderRadius: c.radius + 'px', border: c.borderWidth ? `${c.borderWidth}px solid ${c.border || 'var(--line)'}` : 'none',
-      boxShadow: c.shadow ? 'var(--shadow)' : 'none' } }));
+    const a = (c.opacity ?? 60) / 100, p = c.padding ?? 20;
+    // automatisch: buitenhoek = hoek van de widgets + de ruimte ertussen, zodat de rondingen netjes 'meelopen'
+    const radius = c.radiusAuto !== false ? `calc(var(--r) + ${p}px)` : c.radius + 'px';
+    el.style.position = 'relative';
+    el.append(
+      h('div', { class: 'boxv', style: {
+        background: c.bg ? hexA(c.bg, a) : `color-mix(in srgb, var(--surface) ${Math.round(a * 100)}%, transparent)`,
+        borderRadius: radius, border: c.borderWidth ? `${c.borderWidth}px solid ${c.border || 'var(--line)'}` : 'none',
+        boxShadow: c.shadow ? 'var(--shadow)' : 'none' } }),
+      h('div', { class: 'boxpad', title: 'Binnen deze lijn staan de widgets die bij dit vak horen', style: { inset: p + 'px' } }));
   },
 });
 
@@ -1902,9 +1923,8 @@ reg({
   editor: stepsEditor,
   render(el, ctx) {
     const c = ctx.config;
-    const n = (c.steps || []).filter(s => s.t === 'open').length;
     const firstUrl = (c.steps || []).find(s => s.t === 'open')?.url || '';
-    const b = buttonFace(c, firstUrl, h('span', { class: 'run', html: icon('zap', 11) + (n > 1 ? n + ' sites' : '') }));
+    const b = buttonFace(c, firstUrl);
     b.onclick = () => runAction(ctx.item);
     el.append(b);
   },

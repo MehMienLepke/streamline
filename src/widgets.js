@@ -49,21 +49,29 @@ reg({
 reg({
   type: 'box', name: 'Achtergrondvak', desc: 'Groepeer widgets op een eigen achtergrond', icon: 'box', group: 'basis', card: false,
   size: { w: 10, h: 8 }, min: { w: 1, h: 1 },
-  defaults: { bg: '', opacity: 60, radius: 24, border: '', borderWidth: 0, shadow: false },
+  defaults: { bg: '', opacity: 60, padding: 20, radiusAuto: true, radius: 24, border: '', borderWidth: 0, shadow: false },
   fields: [
+    { key: 'padding', label: 'Ruimte rond de inhoud', type: 'range', min: 0, max: 64, step: 2, unit: 'px',
+      hint: 'Het vak steekt zoveel pixels buiten zijn rastervakjes uit. Zo blijven de widgets erin precies op het raster, uitgelijnd met de rest van je pagina. Laat één lege rij of kolom vrij tussen een vak en wat erbuiten staat.' },
     { key: 'bg', label: 'Achtergrondkleur', type: 'color', allowTheme: true },
     { key: 'opacity', label: 'Dekking', type: 'range', min: 0, max: 100, unit: '%' },
-    { key: 'radius', label: 'Afronding hoeken', type: 'range', min: 0, max: 48, unit: 'px' },
+    { key: 'radiusAuto', label: 'Hoeken automatisch laten meelopen met de widgets erin', type: 'checkbox' },
+    { key: 'radius', label: 'Afronding hoeken', type: 'range', min: 0, max: 64, unit: 'px', showIf: c => !c.radiusAuto },
     { key: 'border', label: 'Randkleur', type: 'color', allowTheme: true },
     { key: 'borderWidth', label: 'Randdikte', type: 'range', min: 0, max: 8, unit: 'px' },
     { key: 'shadow', label: 'Schaduw', type: 'checkbox' },
   ],
   render(el, { config: c }) {
-    const a = (c.opacity ?? 60) / 100;
-    el.append(h('div', { class: 'boxv', style: {
-      background: c.bg ? hexA(c.bg, a) : `color-mix(in srgb, var(--surface) ${Math.round(a * 100)}%, transparent)`,
-      borderRadius: c.radius + 'px', border: c.borderWidth ? `${c.borderWidth}px solid ${c.border || 'var(--line)'}` : 'none',
-      boxShadow: c.shadow ? 'var(--shadow)' : 'none' } }));
+    const a = (c.opacity ?? 60) / 100, p = c.padding ?? 20;
+    // automatisch: buitenhoek = hoek van de widgets + de ruimte ertussen, zodat de rondingen netjes 'meelopen'
+    const radius = c.radiusAuto !== false ? `calc(var(--r) + ${p}px)` : c.radius + 'px';
+    el.style.position = 'relative';
+    el.append(
+      h('div', { class: 'boxv', style: {
+        background: c.bg ? hexA(c.bg, a) : `color-mix(in srgb, var(--surface) ${Math.round(a * 100)}%, transparent)`,
+        borderRadius: radius, border: c.borderWidth ? `${c.borderWidth}px solid ${c.border || 'var(--line)'}` : 'none',
+        boxShadow: c.shadow ? 'var(--shadow)' : 'none' } }),
+      h('div', { class: 'boxpad', title: 'Binnen deze lijn staan de widgets die bij dit vak horen', style: { inset: p + 'px' } }));
   },
 });
 
@@ -196,9 +204,8 @@ reg({
   editor: stepsEditor,
   render(el, ctx) {
     const c = ctx.config;
-    const n = (c.steps || []).filter(s => s.t === 'open').length;
     const firstUrl = (c.steps || []).find(s => s.t === 'open')?.url || '';
-    const b = buttonFace(c, firstUrl, h('span', { class: 'run', html: icon('zap', 11) + (n > 1 ? n + ' sites' : '') }));
+    const b = buttonFace(c, firstUrl);
     b.onclick = () => runAction(ctx.item);
     el.append(b);
   },

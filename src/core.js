@@ -369,6 +369,7 @@ function layout() {
     const el = els.get(it.id); if (!el) continue;
     it.w = clamp(it.w, 1, S.grid.cols); it.x = clamp(it.x, 0, S.grid.cols - it.w);
     const r = rectOf(it);
+    if (it.type === 'box') { const p = it.config.padding ?? 20; r.left -= p; r.top -= p; r.width += 2 * p; r.height += 2 * p; }
     Object.assign(el.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
     bottom = Math.max(bottom, it.y + it.h);
   }
@@ -429,6 +430,7 @@ function initDrag() {
     e.preventDefault();
     pushHistory();
     const sx = e.clientX, sy = e.clientY, o = { x: item.x, y: item.y, w: item.w, h: item.h };
+    const kids = (!resize && item.type === 'box') ? findItem(item.id).list.filter(i => inside(i, item)).map(i => ({ i, x: i.x, y: i.y })) : [];
     const def = WIDGETS[item.type] || {}; const min = def.min || { w: 1, h: 1 }; const max = def.max || { w: S.grid.cols, h: 60 };
     const badge = itemEl.querySelector('.size-badge');
     itemEl.classList.add(resize ? 'resizing' : 'dragging');
@@ -443,6 +445,7 @@ function initDrag() {
       } else {
         item.x = clamp(Math.round(o.x + dx), 0, S.grid.cols - item.w);
         item.y = Math.max(0, Math.round(o.y + dy));
+        for (const k of kids) { k.i.x = k.x + item.x - o.x; k.i.y = k.y + item.y - o.y; }
         badge.textContent = `kolom ${item.x + 1} · rij ${item.y + 1}`;
       }
       moved = true; layout();
