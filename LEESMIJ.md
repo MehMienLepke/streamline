@@ -47,6 +47,7 @@ een tekstbestand; kopieer het als back-up of geef het aan een collega.
 | Titel | Kop boven een widget of groep. Lettertype en kleur stel je voor alle titels tegelijk in (Instellingen → Titels). `{groet}`, `{datum}` en `{tijd}` vullen zich vanzelf. |
 | Achtergrondvak | Groepeert widgets. Kleur, doorzichtigheid, afronding en rand per vak. |
 | Link-knop | Opent een website in een nieuw tabblad. Icoon uit de catalogus of de favicon van de site. |
+| Map- of bestandsknop | Opent een map of bestand op je computer of netwerkschijf in een nieuw tabblad (mappen als klikbare lijst; PDF's, afbeeldingen en tekst direct). Of kopieert het pad, zodat je in Verkenner met `Ctrl`+`L`, `Ctrl`+`V` er meteen heen gaat. Een browser mag zelf geen Verkenner of Word starten. |
 | Actieknop | Opent één of meer websites en kan daarna wachten, klikken, velden invullen, tekst typen en toetsen indrukken. Met `{vraag:Zoekterm}` vraagt hij bij het klikken om een waarde. |
 | Radio | Nederlandse zenders (lijst van nederland.fm). Zenders zijn aan te passen. |
 | To do's | Prioriteit hoog (rood), medium (oranje), laag (geel) en automatisch gesorteerd. Sleep een e-mail uit Outlook erop: de onderwerpregel wordt de taak. Belletje = herinnering. |

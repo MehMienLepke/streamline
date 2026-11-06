@@ -1,6 +1,6 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "groot": false,
-  "notes": "Updates komen nu standaard van github.com/MehMienLepke/streamline. Licentie (MIT) en Engelse README toegevoegd.",
+  "notes": "Nieuw: Map- of bestandsknop. Opent een map of bestand op je computer of netwerkschijf, of kopieert het pad.",
   "file": "streamline.html"
 }
