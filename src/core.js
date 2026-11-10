@@ -5,7 +5,7 @@
    zijn: GitHub (alleen om updates/widgets op te halen, er gaat niets heen),
    radiostreams, en websites/favicons die je zelf in een knop zet.
    ========================================================================== */
-const APP_VERSION = '1.0.5';
+const APP_VERSION = '1.0.6';
 const DEFAULT_REPO = 'MehMienLepke/streamline';
 const SCHEMA = 1;
 const $ = (s, r = document) => r.querySelector(s);
@@ -188,10 +188,28 @@ async function readJSON(name) { return JSON.parse(await readText(name)); }
 async function writeJSON(name, obj) { await writeText(name, JSON.stringify(obj, null, 2)); }
 async function exists(path) { try { await getHandle(path); return true; } catch (e) { return false; } }
 function slug(s) { return (s || 'dashboard').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'dashboard'; }
-async function freeFileName(title) {
-  const files = await listFiles(); let base = slug(title), n = base, i = 2;
-  while (files.includes(n + EXT)) n = base + '-' + i++;
+// Bestandsnaam = titel van je dashboard; alleen tekens die Windows niet toestaat worden vervangen.
+function safeName(s) { return (String(s || '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '-').replace(/\s+/g, ' ').trim().replace(/[. -]+$/, '') || 'Mijn dashboard').slice(0, 80); }
+const fileTitle = name => String(name || '').replace(new RegExp(EXT.replace(/\./g, '\\.') + '$', 'i'), '');
+async function freeFileName(title, except) {
+  const files = (await listFiles()).map(f => f.toLowerCase()); let base = safeName(title), n = base, i = 2;
+  while (files.includes((n + EXT).toLowerCase()) && (n + EXT).toLowerCase() !== (except || '').toLowerCase()) n = base + ' (' + i++ + ')';
   return n + EXT;
+}
+/* Titel wijzigen = het instellingenbestand hernoemen, zodat titel en bestand altijd gelijk zijn. */
+async function renameCurrent(title) {
+  title = safeName(title);
+  if (!(FS.dir && FS.file)) { S.meta.title = title; renderTop(); save(); return; }
+  if (!(await ensurePerm())) { toast('Geef eerst toestemming voor je map'); permissionLost(); renderTop(); return; }
+  const target = await freeFileName(title, FS.file);
+  if (target === FS.file) { S.meta.title = fileTitle(target); renderTop(); save(); return; }
+  const old = FS.file;
+  S.meta.title = fileTitle(target);
+  await writeJSON(target, S);
+  if (target.toLowerCase() !== old.toLowerCase()) { try { await FS.dir.removeEntry(old); } catch (e) {} }
+  else { /* alleen hoofdletters gewijzigd: Windows ziet dit als hetzelfde bestand */ }
+  FS.file = target; await IDB.set('lastFile', target); cacheLocal(); renderTop();
+  toast('Hernoemd naar ' + target);
 }
 function download(name, data, type) {
   const blob = data instanceof Blob ? data : new Blob([data], { type: type || 'application/octet-stream' });
@@ -211,10 +229,47 @@ function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flush, 450);
 }
+/* Chrome trekt de schrijftoestemming voor een map soms stilletjes in (lang open tabblad,
+   slaapstand, browser herstart). Dan vragen we hem opnieuw zodra dat mag (bij een klik),
+   en tot die tijd blijft alles veilig in de browser bewaard. */
+let pendingWrite = false;
+async function ensurePerm() {
+  if (!FS.dir) return false;
+  let st = 'prompt';
+  try { st = await FS.dir.queryPermission({ mode: 'readwrite' }); } catch (e) {}
+  if (st === 'granted') return (FS.perm = true);
+  if (navigator.userActivation?.isActive) {
+    try { st = await FS.dir.requestPermission({ mode: 'readwrite' }); } catch (e) {}
+    if (st === 'granted') return (FS.perm = true);
+  }
+  return (FS.perm = false);
+}
+function permissionLost() {
+  if (pendingWrite) return;
+  pendingWrite = true;
+  showBanner(`Chrome vraagt opnieuw toestemming om in je map “${esc(FS.dir.name)}” op te slaan. Je wijzigingen zijn veilig in de browser bewaard en worden opgeslagen zodra je toestemming geeft.`, 'Toestemming geven', retryWrite);
+  // de eerstvolgende klik ergens op de pagina mag de toestemming ook vragen
+  document.addEventListener('pointerup', retryWrite, { once: true, capture: true });
+}
+async function retryWrite() {
+  if (!pendingWrite || !FS.dir) return;
+  if (await ensurePerm()) {
+    pendingWrite = false; hideBanner();
+    document.removeEventListener('pointerup', retryWrite, { capture: true });
+    await flush(); toast('Weer gekoppeld aan je map — alles is opgeslagen');
+  } else document.addEventListener('pointerup', retryWrite, { once: true, capture: true });
+}
 async function flush() {
   clearTimeout(saveTimer);
-  if (FS.dir && FS.perm && FS.file) {
-    try { await writeJSON(FS.file, S); } catch (e) { toast('Opslaan in je map mislukt: ' + e.message, 5000); }
+  if (FS.dir && FS.file) {
+    if (!(await ensurePerm())) permissionLost();
+    else {
+      try { await writeJSON(FS.file, S); }
+      catch (e) {
+        if (e.name === 'NotAllowedError' || e.name === 'SecurityError') { FS.perm = false; permissionLost(); }
+        else toast('Opslaan in je map mislukt: ' + e.message, 5000);
+      }
+    }
   }
   $('#savedot') && $('#savedot').classList.remove('busy');
 }
@@ -314,9 +369,11 @@ let editing = false;
 let geo = { cw: 40, rh: 36, gap: 14 };
 const canvas = () => $('#canvas');
 
+function currentTitle() { return FS.file ? fileTitle(FS.file) : S.meta.title; }
 function renderTop() {
-  $('#brandsub').textContent = S.meta.title;
-  document.title = 'Streamline — ' + S.meta.title;
+  $('#brandsub').textContent = currentTitle();
+  $('#brandsub').title = FS.file ? 'Instellingenbestand: ' + FS.file : 'Alleen in deze browser opgeslagen';
+  document.title = 'Streamline — ' + currentTitle();
 }
 function renderAll() {
   for (const [id] of els) destroyItem(id);
@@ -791,9 +848,9 @@ function fireReminder(page, item, en) {
   beep();
   try { if ('Notification' in window && Notification.permission === 'granted') new Notification('Streamline — herinnering', { body: text, tag: en.id }); } catch (e) {}
   let flip = false; clearInterval(titleFlash);
-  titleFlash = setInterval(() => { document.title = (flip = !flip) ? '🔔 ' + text : 'Streamline — ' + S.meta.title; }, 1000);
+  titleFlash = setInterval(() => { document.title = (flip = !flip) ? '🔔 ' + text : 'Streamline — ' + currentTitle(); }, 1000);
   const box = h('div', { class: 'alarm', role: 'alert' });
-  const close = () => { box.remove(); clearInterval(titleFlash); document.title = 'Streamline — ' + S.meta.title; };
+  const close = () => { box.remove(); clearInterval(titleFlash); renderTop(); };
   const refresh = () => { if (els.has(item.id)) buildItem(item); };
   box.append(h('h4', { html: icon('bell', 18) + (item.type === 'todo' ? 'To-do herinnering' : 'Notitie herinnering') }), h('p', {}, text),
     h('div', { class: 'row' },
@@ -945,15 +1002,16 @@ async function openFromDir(cached) {
     if (cached && cached.file === name && (cached.state?.meta?.updated || 0) > (st.meta.updated || 0)) st = migrate(cached.state);
     S = st; FS.file = name;
   }
+  S.meta.title = fileTitle(FS.file);
   await IDB.set('lastFile', FS.file);
   cacheLocal();
 }
 async function switchFile(name) {
   await flush();
   const st = migrate(await readJSON(name));
-  S = st; FS.file = name; await IDB.set('lastFile', name); cacheLocal();
+  S = st; FS.file = name; S.meta.title = fileTitle(name); await IDB.set('lastFile', name); cacheLocal();
   applyTheme(); renderAll(); if (editing) { renderRepo(); renderSettings(); }
-  toast('Geopend: ' + S.meta.title);
+  renderTop(); toast('Geopend: ' + currentTitle());
 }
 function showBanner(html, btnLabel, onClick) {
   const b = $('#banner'); b.innerHTML = '';
@@ -1001,7 +1059,7 @@ function welcome() {
 function start() {
   booted = true;
   applyTheme(); renderAll();
-  if (!FS.dir && FS.supported) showBanner('Je instellingen staan nu alleen in deze browser. Koppel een map om ze als bestand te bewaren en te kunnen delen.', 'Map koppelen', async () => { try { await pickDir(); hideBanner(); FS.file = await freeFileName(S.meta.title); await flush(); await IDB.set('lastFile', FS.file); toast('Opgeslagen als ' + FS.file); } catch (e) {} });
+  if (!FS.dir && FS.supported) showBanner('Je instellingen staan nu alleen in deze browser. Koppel een map om ze als bestand te bewaren en te kunnen delen.', 'Map koppelen', async () => { try { await pickDir(); hideBanner(); FS.file = await freeFileName(S.meta.title); S.meta.title = fileTitle(FS.file); await flush(); await IDB.set('lastFile', FS.file); renderTop(); toast('Opgeslagen als ' + FS.file); } catch (e) {} });
   checkReminders(); setInterval(checkReminders, 10000);
   setInterval(() => { for (const it of [...S.global, ...currentPage().items]) if (it.type === 'title' && /\{(groet|tijd|datum)\}/i.test(it.config.text)) buildItem(it); }, 60000);
   if (S.update.repo) setTimeout(() => checkUpdate(false), 1500);

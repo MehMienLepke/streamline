@@ -24,7 +24,10 @@ function tabGeneral(b) {
   b.append(
     sect('Dit instellingenbestand',
       h('div', { class: 'field' }, h('label', {}, 'Titel (staat linksboven naast Streamline)'),
-        h('input', { class: 'inp', value: S.meta.title, oninput: e => { S.meta.title = e.target.value; renderTop(); save(); } }))),
+        h('input', { class: 'inp', value: currentTitle(),
+          onkeydown: e => { if (e.key === 'Enter') e.target.blur(); },
+          onchange: async e => { await renameCurrent(e.target.value); e.target.value = currentTitle(); } }),
+        h('p', { class: 'hint', style: { margin: '4px 0 0' } }, FS.file ? 'De titel is de naam van je instellingenbestand. Wijzig je hem hier, dan wordt het bestand in je map hernoemd.' : 'Koppel een map (tab Bestanden) om dit dashboard als bestand te bewaren.'))),
     sect('Paginamenu',
       nav ? [
         h('div', { class: 'field' }, h('label', {}, 'Richting'), segCtl([['h', 'Horizontaal'], ['v', 'Verticaal']], nav.config.orientation, v => setAllNav('orientation', v))),
@@ -115,7 +118,7 @@ function tabFiles(b) {
     : h('div', { class: 'list-row' }, h('span', { html: icon('alert', 18) }), h('div', { class: 'grow hint', style: { margin: 0 } }, 'Geen map gekoppeld: je instellingen staan alleen in deze browser.'));
   b.append(sect('Opslaglocatie', status,
     FS.supported ? h('button', { class: 'btn', onclick: async () => {
-      try { await flush(); await pickDir(); const files = await listFiles(); if (files.length) await switchFile(files[0]); else { FS.file = await freeFileName(S.meta.title); await flush(); await IDB.set('lastFile', FS.file); } hideBanner(); renderSettings(); } catch (e) {}
+      try { await flush(); await pickDir(); const files = await listFiles(); if (files.length) await switchFile(files[0]); else { FS.file = await freeFileName(S.meta.title); S.meta.title = fileTitle(FS.file); await flush(); await IDB.set('lastFile', FS.file); renderTop(); } hideBanner(); renderSettings(); } catch (e) {}
     } }, h('span', { html: icon('folder', 15) }), FS.dir ? 'Andere map kiezen' : 'Map koppelen') : null));
 
   const filesBox = h('div', {}, h('div', { class: 'hint' }, 'Laden…'));
@@ -123,7 +126,7 @@ function tabFiles(b) {
     h('div', { class: 'row', style: { flexWrap: 'wrap', marginTop: '8px' } },
       h('button', { class: 'btn sm', onclick: newSettingsFile }, h('span', { html: icon('plus', 14) }), 'Nieuw'),
       h('button', { class: 'btn sm', onclick: dupSettingsFile }, h('span', { html: icon('copy', 14) }), 'Dupliceer huidige'),
-      h('button', { class: 'btn sm', onclick: () => download(FS.file || slug(S.meta.title) + EXT, JSON.stringify(S, null, 2), 'application/json') }, h('span', { html: icon('download', 14) }), 'Exporteren'),
+      h('button', { class: 'btn sm', onclick: () => download(FS.file || safeName(currentTitle()) + EXT, JSON.stringify(S, null, 2), 'application/json') }, h('span', { html: icon('download', 14) }), 'Exporteren'),
       h('button', { class: 'btn sm', onclick: importSettingsFile }, h('span', { html: icon('upload', 14) }), 'Importeren'))));
   (async () => {
     filesBox.innerHTML = '';
@@ -143,14 +146,14 @@ async function newSettingsFile() {
   if (!t) return;
   const st = defaultState(t, S.theme.preset);
   if (FS.dir && FS.perm) { const n = await freeFileName(t); await writeJSON(n, st); await switchFile(n); renderSettings(); }
-  else { if (!(await confirmDlg('Zonder map', 'Zonder gekoppelde map kun je maar één instellingenbestand tegelijk gebruiken. Het huidige wordt eerst gedownload als reservekopie en daarna vervangen.', 'Doorgaan'))) return; download(slug(S.meta.title) + EXT, JSON.stringify(S, null, 2)); S = st; save(); applyTheme(); renderAll(); renderSettings(); }
+  else { if (!(await confirmDlg('Zonder map', 'Zonder gekoppelde map kun je maar één instellingenbestand tegelijk gebruiken. Het huidige wordt eerst gedownload als reservekopie en daarna vervangen.', 'Doorgaan'))) return; download(safeName(currentTitle()) + EXT, JSON.stringify(S, null, 2)); S = st; save(); applyTheme(); renderAll(); renderSettings(); }
 }
 async function dupSettingsFile() {
   if (!(FS.dir && FS.perm)) return toast('Koppel eerst een map');
-  const t = await ask('Dupliceren', 'Naam van de kopie', S.meta.title + ' (kopie)');
+  const t = await ask('Dupliceren', 'Naam van de kopie', currentTitle() + ' (kopie)');
   if (!t) return;
-  const st = clone(S); st.meta.title = t; st.meta.created = Date.now();
-  const n = await freeFileName(t); await writeJSON(n, st); toast('Kopie gemaakt: ' + n); renderSettings();
+  const n = await freeFileName(t);
+  const st = clone(S); st.meta.title = fileTitle(n); st.meta.created = Date.now(); await writeJSON(n, st); toast('Kopie gemaakt: ' + n); renderSettings();
 }
 function pickJSONFile() {
   return new Promise(res => {
@@ -163,14 +166,14 @@ async function importSettingsFile() {
   if (f.data.app !== 'streamline' && !f.data.pages) return toast('Dit is geen Streamline-instellingenbestand');
   const st = migrate(f.data);
   if (FS.dir && FS.perm) { const n = await freeFileName(st.meta.title); await writeJSON(n, st); await switchFile(n); renderSettings(); }
-  else { if (!(await confirmDlg('Importeren', 'Je huidige dashboard wordt vervangen. Eerst wordt een reservekopie gedownload.', 'Importeren'))) return; download(slug(S.meta.title) + EXT, JSON.stringify(S, null, 2)); S = st; save(); applyTheme(); renderAll(); renderSettings(); }
+  else { if (!(await confirmDlg('Importeren', 'Je huidige dashboard wordt vervangen. Eerst wordt een reservekopie gedownload.', 'Importeren'))) return; download(safeName(currentTitle()) + EXT, JSON.stringify(S, null, 2)); S = st; save(); applyTheme(); renderAll(); renderSettings(); }
 }
 
 /* --- kopiëren tussen bestanden --- */
 async function openCopyBetween() {
   const files = await listFiles();
-  const sources = [['__current', 'Huidig: ' + S.meta.title], ...files.filter(f => f !== FS.file).map(f => [f, f]), ['__pick', 'Bestand van mijn computer…']];
-  const targets = [['__current', 'Huidig: ' + S.meta.title], ...files.filter(f => f !== FS.file).map(f => [f, f])];
+  const sources = [['__current', 'Huidig: ' + currentTitle()], ...files.filter(f => f !== FS.file).map(f => [f, f]), ['__pick', 'Bestand van mijn computer…']];
+  const targets = [['__current', 'Huidig: ' + currentTitle()], ...files.filter(f => f !== FS.file).map(f => [f, f])];
   let src = files.length > 1 ? sources[1][0] : '__pick', dst = '__current', srcState = null, targetPage = '__new';
   const sel = new Set();
   const treeBox = h('div', { class: 'tree' });

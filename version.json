@@ -1,6 +1,6 @@
 {
-  "version": "1.0.5",
+  "version": "1.0.6",
   "groot": false,
-  "notes": "De Map- of bestandsknop is verwijderd. Had je er een geplaatst, dan zie je op die plek een melding; je kunt hem in de bewerkmodus verwijderen.",
+  "notes": "Opgelost: foutmelding 'Opslaan in je map mislukt' als Chrome de toestemming voor je map had ingetrokken. Streamline vraagt nu zelf opnieuw toestemming en raakt niets kwijt. De titel linksboven is nu altijd de naam van je instellingenbestand; de titel wijzigen hernoemt het bestand.",
   "file": "streamline.html"
 }
