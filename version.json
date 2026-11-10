@@ -1,6 +1,6 @@
 {
-  "version": "1.0.6",
+  "version": "1.0.7",
   "groot": false,
-  "notes": "Opgelost: foutmelding 'Opslaan in je map mislukt' als Chrome de toestemming voor je map had ingetrokken. Streamline vraagt nu zelf opnieuw toestemming en raakt niets kwijt. De titel linksboven is nu altijd de naam van je instellingenbestand; de titel wijzigen hernoemt het bestand.",
+  "notes": "Kniptool: formaten bewerken en snelkoppelingen bovenin, meerdere versies per afbeelding, en bestandsnamen met de maten erachter (bijv. foto-1080x1350.jpg).",
   "file": "streamline.html"
 }

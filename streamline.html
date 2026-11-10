@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="streamline-app" content="1.0.6">
+<meta name="streamline-app" content="1.0.7">
 <!-- Privacy-slot: deze pagina mag alleen GitHub lezen (updates/widgets). Elk ander verzoek om gegevens te versturen wordt door de browser geblokkeerd. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline'; img-src * data: blob:; media-src *; connect-src https://raw.githubusercontent.com; font-src data:; form-action 'none'; base-uri 'none'">
 <title>Streamline</title>
@@ -390,6 +390,28 @@ kbd{font:600 11px var(--font);background:var(--surface-2);border:1px solid var(-
 .upd-msg>.ic{color:var(--accent);flex:none;margin-top:1px}
 .pill.busy{animation:none;opacity:.85;pointer-events:none}
 
+/* ---------- kniptool: snelkoppelingen en versies ---------- */
+.cr-fmt{max-width:100%}
+.cr-fmt span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr-chips,.cr-vers{display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-width:0}
+.cr-chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:650;display:inline-flex;align-items:center;gap:4px;color:var(--ink)}
+.cr-chip:hover:not(:disabled){border-color:var(--accent)}
+.cr-chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.cr-chip:disabled{opacity:.45;cursor:default}
+.cr-chip.add{border-style:dashed;color:var(--muted);padding:5px 9px}
+.cr-ver{display:inline-flex;align-items:center;border-radius:999px;background:var(--surface-2);border:1px solid transparent}
+.cr-ver.on{background:var(--ink);color:var(--bg)}
+.cr-ver-b{border:0;background:transparent;color:inherit;font-size:12px;font-weight:650;padding:5px 10px;font-variant-numeric:tabular-nums}
+.cr-ver-x{border:0;background:transparent;color:inherit;opacity:.6;padding:0 8px 0 0;display:grid;place-items:center}
+.cr-ver-x:hover{opacity:1}
+.cr-count{position:absolute;left:3px;bottom:3px;min-width:17px;height:17px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:800;display:grid;place-items:center;padding:0 4px}
+.cr-star.on,.cr-star-ic.on{color:var(--mid)}
+.cr-star.on .ic,.cr-star-ic.on .ic{fill:currentColor}
+.cr-star-ic{color:var(--line);display:grid;place-items:center}
+.pop .opt.cr-cur{background:var(--accent-soft);font-weight:650}
+.pop .opt .grow{flex:1}
+.cr-pane .lab{max-width:calc(100% - 20px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:none;letter-spacing:0}
+
 </style>
 </head>
 <body>
@@ -551,7 +573,7 @@ function icon(name, size){
    zijn: GitHub (alleen om updates/widgets op te halen, er gaat niets heen),
    radiostreams, en websites/favicons die je zelf in een knop zet.
    ========================================================================== */
-const APP_VERSION = '1.0.6';
+const APP_VERSION = '1.0.7';
 const DEFAULT_REPO = 'MehMienLepke/streamline';
 const SCHEMA = 1;
 const $ = (s, r = document) => r.querySelector(s);
@@ -2519,82 +2541,108 @@ function makeZip(files) {
   end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, csize, true); end.setUint32(16, off, true);
   return new Blob([...parts, ...central, end], { type: 'application/zip' });
 }
-function cropRect(im, p) {
-  const W = im.w, H = im.h, a = p.w / p.h;
+/* Een 'versie' is één uitsnede van een afbeelding: formaat (b×h) + focuspunt + zoom.
+   Elke afbeelding kan meerdere versies hebben. */
+function cropRect(im, v) {
+  const W = im.w, H = im.h, a = v.w / v.h;
   let cw, ch; if (W / H > a) { ch = H; cw = H * a; } else { cw = W; ch = W / a; }
-  cw /= im.zoom || 1; ch /= im.zoom || 1;
-  const sx = clamp(im.fx * W - cw / 2, 0, W - cw), sy = clamp(im.fy * H - ch / 2, 0, H - ch);
+  cw /= v.zoom || 1; ch /= v.zoom || 1;
+  const sx = clamp(v.fx * W - cw / 2, 0, W - cw), sy = clamp(v.fy * H - ch / 2, 0, H - ch);
   return { sx, sy, sw: cw, sh: ch };
 }
-async function renderCrop(im, p, cfg) {
-  const r = cropRect(im, p);
+async function renderCrop(im, v, cfg) {
+  const r = cropRect(im, v);
   let bmp;
-  try { bmp = await createImageBitmap(im.el, r.sx, r.sy, r.sw, r.sh, { resizeWidth: p.w, resizeHeight: p.h, resizeQuality: 'high' }); } catch (e) { bmp = null; }
-  const cv = h('canvas', { width: p.w, height: p.h }); const cx = cv.getContext('2d');
-  if (cfg.format === 'jpeg') { cx.fillStyle = '#fff'; cx.fillRect(0, 0, p.w, p.h); }
+  try { bmp = await createImageBitmap(im.el, r.sx, r.sy, r.sw, r.sh, { resizeWidth: v.w, resizeHeight: v.h, resizeQuality: 'high' }); } catch (e) { bmp = null; }
+  const cv = h('canvas', { width: v.w, height: v.h }); const cx = cv.getContext('2d');
+  if (cfg.format === 'jpeg') { cx.fillStyle = '#fff'; cx.fillRect(0, 0, v.w, v.h); }
   if (bmp) cx.drawImage(bmp, 0, 0);
   else {
     // terugval: stapsgewijs verkleinen voor scherpe resultaten
     let src = im.el, sx = r.sx, sy = r.sy, sw = r.sw, sh = r.sh;
-    while (sw / 2 > p.w && sh / 2 > p.h) {
+    while (sw / 2 > v.w && sh / 2 > v.h) {
       const t = h('canvas', { width: Math.round(sw / 2), height: Math.round(sh / 2) }); const tc = t.getContext('2d');
       tc.imageSmoothingQuality = 'high'; tc.drawImage(src, sx, sy, sw, sh, 0, 0, t.width, t.height);
       src = t; sx = sy = 0; sw = t.width; sh = t.height;
     }
-    cx.imageSmoothingQuality = 'high'; cx.drawImage(src, sx, sy, sw, sh, 0, 0, p.w, p.h);
+    cx.imageSmoothingQuality = 'high'; cx.drawImage(src, sx, sy, sw, sh, 0, 0, v.w, v.h);
   }
   const type = 'image/' + (cfg.format || 'jpeg');
   return new Promise(res => cv.toBlob(res, type, (cfg.quality ?? 92) / 100));
 }
 const fileBase = n => n.replace(/\.[^.]+$/, '');
 const extOf = f => f === 'jpeg' ? 'jpg' : f;
-function cropName(cfg, im, p) {
-  return (cfg.pattern || '{naam}-{formaat}').replace('{naam}', fileBase(im.name)).replace('{formaat}', slug(p.name)).replace('{breedte}', p.w).replace('{hoogte}', p.h) + '.' + extOf(cfg.format || 'jpeg');
+const CROP_PATTERN = '{naam}-{breedte}x{hoogte}';
+function cropName(cfg, im, v) {
+  return (cfg.pattern || CROP_PATTERN).split('{naam}').join(fileBase(im.name)).split('{formaat}').join(slug(v.name || ''))
+    .split('{breedte}').join(v.w).split('{hoogte}').join(v.h) + '.' + extOf(cfg.format || 'jpeg');
+}
+const newVersion = (p, from) => ({ id: uid(), pid: p.id, name: p.name, w: p.w, h: p.h, fx: from?.fx ?? .5, fy: from?.fy ?? .5, zoom: 1 });
+function presetsEditor(cfg, onChange) {
+  const box = h('div');
+  const draw = () => {
+    box.innerHTML = '';
+    cfg.presets.forEach((p, i) => box.append(h('div', { class: 'row', style: { marginBottom: '6px' } },
+      h('button', { class: 'mini cr-star' + (p.pin ? ' on' : ''), title: p.pin ? 'Snelkoppeling verwijderen' : 'Als snelkoppeling bovenin tonen', html: icon('star', 16), onclick: () => { p.pin = !p.pin; draw(); onChange(); } }),
+      h('input', { class: 'inp grow', value: p.name, placeholder: 'Naam', oninput: e => { p.name = e.target.value; onChange(); } }),
+      h('input', { class: 'inp', type: 'number', min: 1, style: { width: '86px' }, value: p.w, oninput: e => { p.w = Math.max(1, Math.round(+e.target.value) || 1); onChange(); } }),
+      h('span', {}, '×'),
+      h('input', { class: 'inp', type: 'number', min: 1, style: { width: '86px' }, value: p.h, oninput: e => { p.h = Math.max(1, Math.round(+e.target.value) || 1); onChange(); } }),
+      h('span', { class: 'hint', style: { margin: 0 } }, 'px'),
+      ib('trash', 'Verwijderen', () => { if (cfg.presets.length < 2) return toast('Je hebt minstens één formaat nodig'); cfg.presets.splice(i, 1); draw(); onChange(); }, 'mini'))));
+  };
+  draw();
+  return h('div', {}, box, h('button', { class: 'btn sm', onclick: () => { cfg.presets.push({ id: uid(), name: 'Nieuw formaat', w: 1000, h: 1000, pin: true }); draw(); onChange(); } }, '+ Formaat'),
+    h('p', { class: 'hint' }, 'Met het sterretje zet je een formaat als snelkoppeling bovenin de kniptool.'));
+}
+function fixPresets(cfg) {
+  let changed = false;
+  if (!Array.isArray(cfg.presets) || !cfg.presets.length) { cfg.presets = clone(WIDGETS.crop.defaults.presets); changed = true; }
+  for (const p of cfg.presets) if (!p.id) { p.id = uid(); changed = true; }
+  if (!cfg.pattern || cfg.pattern === '{naam}-{formaat}') { if (cfg.pattern !== CROP_PATTERN) { cfg.pattern = CROP_PATTERN; changed = true; } }
+  return changed;
 }
 reg({
   type: 'crop', name: 'Bijsnijden', desc: 'Afbeeldingen snel en scherp bijsnijden op vaste formaten met een focuspunt', icon: 'crop', group: 'widgets',
   size: { w: 14, h: 12 }, min: { w: 6, h: 7 }, wideConfig: true, rebuildOnResize: true,
   defaults: {
-    title: '', format: 'jpeg', quality: 92, pattern: '{naam}-{formaat}',
+    title: '', format: 'jpeg', quality: 92, pattern: CROP_PATTERN,
     presets: [
-      { name: 'Social deelbeeld', w: 1200, h: 630 }, { name: 'Vierkant', w: 1080, h: 1080 }, { name: 'Instagram staand', w: 1080, h: 1350 },
-      { name: 'Story', w: 1080, h: 1920 }, { name: 'Website header', w: 1920, h: 600 }, { name: 'Thumbnail', w: 400, h: 400 },
+      { id: 'p-social', name: 'Social deelbeeld', w: 1200, h: 630 }, { id: 'p-vierkant', name: 'Vierkant', w: 1080, h: 1080, pin: true },
+      { id: 'p-insta', name: 'Instagram staand', w: 1080, h: 1350, pin: true }, { id: 'p-story', name: 'Story', w: 1080, h: 1920, pin: true },
+      { id: 'p-header', name: 'Website header', w: 1920, h: 600 }, { id: 'p-thumb', name: 'Thumbnail', w: 400, h: 400 },
     ],
   },
   fields: [
     { key: 'title', label: 'Kop (optioneel)', type: 'text' },
     { key: 'format', label: 'Bestandstype', type: 'seg', options: [['jpeg', 'JPG'], ['png', 'PNG'], ['webp', 'WebP']] },
     { key: 'quality', label: 'Kwaliteit (JPG/WebP)', type: 'range', min: 60, max: 100, unit: '%' },
-    { key: 'pattern', label: 'Bestandsnaam', type: 'text', hint: 'Gebruik {naam}, {formaat}, {breedte} en {hoogte}.' },
+    { key: 'pattern', label: 'Bestandsnaam', type: 'text', hint: 'Standaard: de oorspronkelijke naam met de maten erachter, bijv. vakantie-1080x1350.jpg. Je kunt {naam}, {breedte}, {hoogte} en {formaat} (naam van het formaat) gebruiken.' },
   ],
   editor(el, cfg) {
-    cfg.presets = clone(cfg.presets || []);
-    const box = h('div');
-    const draw = () => {
-      box.innerHTML = '';
-      cfg.presets.forEach((p, i) => box.append(h('div', { class: 'row', style: { marginBottom: '6px' } },
-        h('input', { class: 'inp grow', value: p.name, placeholder: 'Naam', oninput: e => p.name = e.target.value }),
-        h('input', { class: 'inp', type: 'number', min: 1, style: { width: '100px' }, value: p.w, oninput: e => p.w = Math.max(1, +e.target.value) }),
-        h('span', {}, '×'),
-        h('input', { class: 'inp', type: 'number', min: 1, style: { width: '100px' }, value: p.h, oninput: e => p.h = Math.max(1, +e.target.value) }),
-        h('span', { class: 'hint', style: { margin: 0 } }, 'px'),
-        ib('trash', 'Verwijderen', () => { cfg.presets.splice(i, 1); draw(); }, 'mini'))));
-    };
-    draw();
-    el.append(h('div', { class: 'sect' }, h('h4', {}, 'Formaten'), box, h('button', { class: 'btn sm', onclick: () => { cfg.presets.push({ name: 'Nieuw formaat', w: 1000, h: 1000 }); draw(); } }, '+ Formaat')));
+    cfg.presets = clone(cfg.presets || []); fixPresets(cfg);
+    el.append(h('div', { class: 'sect' }, h('h4', {}, 'Formaten'), presetsEditor(cfg, () => {})));
   },
   render(el, ctx) {
     const item = ctx.item, cfg = ctx.config;
-    const st = CROP.get(item.id) || { imgs: [], cur: 0 }; CROP.set(item.id, st);
-    const presets = cfg.presets?.length ? cfg.presets : [{ name: 'Origineel vierkant', w: 1000, h: 1000 }];
+    if (fixPresets(cfg)) ctx.save();
+    const presets = cfg.presets;
+    const st = CROP.get(item.id) || { imgs: [], cur: 0, template: null }; CROP.set(item.id, st);
+    const persist = debounce(() => ctx.save(), 400);
+    // een versie volgt zijn formaat als je dat formaat bewerkt
+    const syncVersions = () => {
+      for (const im of st.imgs) for (const v of im.vers) { const p = presets.find(x => x.id === v.pid); if (p) Object.assign(v, { name: p.name, w: p.w, h: p.h }); }
+    };
     const fileInp = h('input', { type: 'file', accept: 'image/*', multiple: true, style: { display: 'none' }, onchange: () => { addFiles(fileInp.files); fileInp.value = ''; } });
     const addFiles = async files => {
       const imgs = [...files].filter(f => f.type.startsWith('image/'));
       if (!imgs.length) return toast('Sleep afbeeldingen (JPG, PNG, WebP…)');
+      const tpl = st.template || [{ pid: (presets.find(p => p.pin) || presets[0]).id }];
       for (const f of imgs) {
         const url = URL.createObjectURL(f);
         const img = new Image(); img.src = url; await img.decode().catch(() => {});
-        st.imgs.push({ id: uid(), name: f.name, url, el: img, w: img.naturalWidth, h: img.naturalHeight, fx: .5, fy: .5, zoom: 1, preset: st.imgs[st.cur]?.preset ?? 0 });
+        const vers = tpl.map(t => { const p = presets.find(x => x.id === t.pid) || { id: null, name: t.name, w: t.w, h: t.h }; return newVersion(p); });
+        st.imgs.push({ id: uid(), name: f.name, url, el: img, w: img.naturalWidth, h: img.naturalHeight, vers, cv: 0 });
       }
       st.cur = st.imgs.length - imgs.length; draw();
     };
@@ -2604,24 +2652,65 @@ reg({
     card.addEventListener('dragleave', e => { if (!card.contains(e.relatedTarget)) card.classList.remove('dropping'); });
     card.addEventListener('drop', e => { if (editing) return; e.preventDefault(); e.stopPropagation(); card.classList.remove('dropping'); addFiles(e.dataTransfer.files); });
 
+    const rememberTemplate = im => { st.template = im.vers.map(v => ({ pid: v.pid, name: v.name, w: v.w, h: v.h })); };
+    const fmtLabel = v => `${v.w}×${v.h}`;
     let previewTick = 0;
     const draw = () => {
       root.innerHTML = '';
-      if (!st.imgs.length) {
+      // --- bovenbalk: formatenmenu + snelkoppelingen (ook zonder afbeelding te beheren) ---
+      const im = st.imgs.length ? st.imgs[st.cur = clamp(st.cur, 0, st.imgs.length - 1)] : null;
+      if (im) im.cv = clamp(im.cv, 0, im.vers.length - 1);
+      const v = im ? im.vers[im.cv] : null;
+      const usePreset = p => { if (!v) return; Object.assign(v, { pid: p.id, name: p.name, w: p.w, h: p.h }); rememberTemplate(im); draw(); };
+      const fmtBtn = h('button', { class: 'btn sm cr-fmt', title: 'Formaat kiezen of formaten bewerken', html: icon('crop', 14) + `<span>${v ? esc((v.name ? v.name + ' · ' : '') + fmtLabel(v)) : 'Formaten'}</span>` + icon('chevrondown', 14) });
+      fmtBtn.onclick = () => {
+        const list = h('div');
+        const drawList = () => {
+          list.innerHTML = '';
+          for (const p of presets) list.append(h('button', { class: 'opt' + (v && v.pid === p.id ? ' cr-cur' : ''), onclick: () => { closePop(); usePreset(p); } },
+            h('span', { class: 'cr-star-ic' + (p.pin ? ' on' : ''), html: icon('star', 14) }), h('span', { class: 'grow' }, p.name), h('span', { class: 'cr-info' }, fmtLabel(p))));
+        };
+        drawList();
+        const pop = popover(fmtBtn, [h('div', { class: 'lbl', style: { padding: '4px 10px 6px' } }, v ? 'Formaat voor deze versie' : 'Formaten'), list, h('hr'),
+          h('button', { class: 'opt', html: icon('pencil', 15) + 'Formaten en snelkoppelingen bewerken…', onclick: () => { closePop(); editPresets(); } })]);
+        pop.style.minWidth = '280px';
+      };
+      const editPresets = () => {
+        const m = openModal({ title: 'Formaten en snelkoppelingen', wide: true,
+          body: presetsEditor(cfg, () => { syncVersions(); persist(); }),
+          foot: [h('button', { class: 'btn primary', onclick: () => m.close() }, 'Klaar')],
+          onClose: () => { syncVersions(); ctx.save(); draw(); } });
+      };
+      const chips = h('div', { class: 'cr-chips' });
+      for (const p of presets.filter(x => x.pin)) chips.append(h('button', { class: 'cr-chip' + (v && v.pid === p.id ? ' on' : ''), title: `${p.name} · ${fmtLabel(p)}`, disabled: !v, onclick: () => usePreset(p) }, p.name));
+      chips.append(h('button', { class: 'cr-chip add', title: 'Snelkoppeling toevoegen of formaten bewerken', html: icon('plus', 13), onclick: editPresets }));
+      root.append(h('div', { class: 'cr-bar' }, fmtBtn, chips));
+
+      if (!im) {
         root.append(h('div', { class: 'cr-drop', onclick: () => fileInp.click(), html: icon('image', 34) + '<b style="color:var(--ink)">Sleep afbeeldingen hierheen</b><span>of klik om ze te kiezen — meerdere tegelijk kan ook</span><span style="font-size:11.5px">Alles gebeurt op je eigen computer.</span>' }));
         return;
       }
-      st.cur = clamp(st.cur, 0, st.imgs.length - 1);
-      const im = st.imgs[st.cur]; im.preset = clamp(im.preset, 0, presets.length - 1);
-      const p = presets[im.preset];
-      // balk
-      const presetSel = h('select', { class: 'inp', value: String(im.preset), onchange: e => { im.preset = +e.target.value; draw(); } }, presets.map((x, i) => h('option', { value: String(i) }, `${x.name} · ${x.w}×${x.h}`)));
-      const zoom = h('input', { type: 'range', min: 1, max: 4, step: .05, value: im.zoom, style: { width: '110px' }, oninput: e => { im.zoom = +e.target.value; overlay(); preview(); } });
-      root.append(h('div', { class: 'cr-bar' }, presetSel,
-        h('button', { class: 'btn sm', title: 'Gebruik dit formaat voor alle afbeeldingen', onclick: () => { st.imgs.forEach(x => x.preset = im.preset); toast('Formaat toegepast op alle afbeeldingen'); } }, 'Op alles toepassen'),
+      // --- versies van deze afbeelding ---
+      const zoom = h('input', { type: 'range', min: 1, max: 4, step: .05, value: v.zoom, style: { width: '100px' }, oninput: e => { v.zoom = +e.target.value; overlay(); preview(); } });
+      const vers = h('div', { class: 'cr-vers' }, h('span', { class: 'cr-info' }, 'Versies:'));
+      im.vers.forEach((x, i) => vers.append(h('span', { class: 'cr-ver' + (i === im.cv ? ' on' : ''), title: (x.name || 'Eigen formaat') + ' · ' + fmtLabel(x) },
+        h('button', { class: 'cr-ver-b', onclick: () => { im.cv = i; draw(); } }, fmtLabel(x)),
+        im.vers.length > 1 ? h('button', { class: 'cr-ver-x', title: 'Deze versie verwijderen', html: icon('x', 12), onclick: () => { im.vers.splice(i, 1); im.cv = Math.min(im.cv, im.vers.length - 1); rememberTemplate(im); draw(); } }) : '')));
+      vers.append(h('button', { class: 'cr-chip add', title: 'Nog een uitsnede van deze afbeelding maken', onclick: () => {
+        const used = new Set(im.vers.map(x => x.pid));
+        const next = presets.find(p => p.pin && !used.has(p.id)) || presets.find(p => !used.has(p.id)) || presets[0];
+        im.vers.push(newVersion(next, v)); im.cv = im.vers.length - 1; rememberTemplate(im); draw();
+        toast('Nieuwe versie: kies bovenin het formaat');
+      } }, h('span', { html: icon('plus', 13) }), 'Versie'));
+      root.append(h('div', { class: 'cr-bar' }, vers,
+        h('button', { class: 'btn sm', title: 'Geef alle afbeeldingen dezelfde versies (formaten) als deze', onclick: () => {
+          const tpl = im.vers;
+          for (const x of st.imgs) if (x !== im) x.vers = tpl.map(t => ({ ...newVersion({ id: t.pid, name: t.name, w: t.w, h: t.h }, x.vers[0]) }));
+          rememberTemplate(im); toast('Alle afbeeldingen hebben nu dezelfde versies'); draw();
+        } }, 'Op alle afbeeldingen'),
         h('span', { class: 'cr-info', style: { marginLeft: 'auto' } }, 'Inzoomen'), zoom,
-        h('button', { class: 'btn sm', title: 'Focuspunt terug naar het midden', onclick: () => { im.fx = im.fy = .5; im.zoom = 1; draw(); } }, 'Reset')));
-      // panelen
+        h('button', { class: 'btn sm', title: 'Focuspunt terug naar het midden', onclick: () => { v.fx = v.fy = .5; v.zoom = 1; draw(); } }, 'Reset')));
+      // --- panelen ---
       const stage = h('div', { class: 'cr-stage' }); const img = h('img', { src: im.url, alt: im.name, draggable: false });
       const rect = h('div', { class: 'cr-rect' }), fp = h('div', { class: 'cr-fp' });
       stage.append(img, rect, fp);
@@ -2629,59 +2718,61 @@ reg({
       const stack = el.clientWidth < 560;
       root.append(h('div', { class: 'cr-main' + (stack ? ' stack' : '') },
         h('div', { class: 'cr-pane' }, h('span', { class: 'lab' }, 'Klik voor focuspunt'), stage),
-        h('div', { class: 'cr-pane' }, h('span', { class: 'lab' }, 'Voorbeeld'), prevCv)));
+        h('div', { class: 'cr-pane' }, h('span', { class: 'lab' }, 'Voorbeeld · ' + cropName(cfg, im, v)), prevCv)));
       const info = h('span', { class: 'cr-info' });
       const overlay = () => {
         const dw = img.clientWidth, dh = img.clientHeight; if (!dw) return;
-        const r = cropRect(im, p), k = dw / im.w;
+        const r = cropRect(im, v), k = dw / im.w;
         Object.assign(rect.style, { left: r.sx * k + 'px', top: r.sy * k + 'px', width: r.sw * k + 'px', height: r.sh * k + 'px' });
-        Object.assign(fp.style, { left: im.fx * dw + 'px', top: im.fy * dh + 'px' });
-        const up = r.sw < p.w - .5;
-        info.innerHTML = `${im.w}×${im.h} → ${p.w}×${p.h}` + (up ? ` · <span class="cr-warn">wordt vergroot (bron te klein)</span>` : '');
+        Object.assign(fp.style, { left: v.fx * dw + 'px', top: v.fy * dh + 'px' });
+        const up = r.sw < v.w - .5;
+        info.innerHTML = `${im.w}×${im.h} → ${v.w}×${v.h}` + (up ? ` · <span class="cr-warn">wordt vergroot (bron te klein)</span>` : '');
       };
       const preview = () => {
         const tick = ++previewTick;
         requestAnimationFrame(() => {
           if (tick !== previewTick) return;
           const pane = prevCv.parentElement; const maxW = pane.clientWidth - 20, maxH = pane.clientHeight - 44;
-          const s = Math.min(maxW / p.w, maxH / p.h, 1); const w = Math.max(1, Math.round(p.w * s)), hh = Math.max(1, Math.round(p.h * s));
+          const s = Math.min(maxW / v.w, maxH / v.h, 1); const w = Math.max(1, Math.round(v.w * s)), hh = Math.max(1, Math.round(v.h * s));
           const dpr = devicePixelRatio || 1; prevCv.width = w * dpr; prevCv.height = hh * dpr; prevCv.style.width = w + 'px'; prevCv.style.height = hh + 'px';
-          const r = cropRect(im, p), c = prevCv.getContext('2d'); c.imageSmoothingQuality = 'high';
+          const r = cropRect(im, v), c = prevCv.getContext('2d'); c.imageSmoothingQuality = 'high';
           c.drawImage(im.el, r.sx, r.sy, r.sw, r.sh, 0, 0, prevCv.width, prevCv.height);
         });
       };
-      const setFp = e => { const b = img.getBoundingClientRect(); im.fx = clamp((e.clientX - b.left) / b.width, 0, 1); im.fy = clamp((e.clientY - b.top) / b.height, 0, 1); overlay(); preview(); };
+      const setFp = e => { const b = img.getBoundingClientRect(); v.fx = clamp((e.clientX - b.left) / b.width, 0, 1); v.fy = clamp((e.clientY - b.top) / b.height, 0, 1); overlay(); preview(); };
       stage.addEventListener('pointerdown', e => { e.preventDefault(); stage.setPointerCapture(e.pointerId); setFp(e); const mv = ev => setFp(ev); stage.addEventListener('pointermove', mv); stage.addEventListener('pointerup', () => stage.removeEventListener('pointermove', mv), { once: true }); });
       const fit = () => { const pane = stage.parentElement; img.style.maxWidth = (pane.clientWidth - 16) + 'px'; img.style.maxHeight = (pane.clientHeight - 16) + 'px'; overlay(); preview(); };
       if (img.complete) requestAnimationFrame(fit); else img.onload = fit;
       new ResizeObserver(() => fit()).observe(stage.parentElement);
-      // onderbalk
+      // --- onderbalk ---
       const thumbs = h('div', { class: 'cr-thumbs' });
-      st.imgs.forEach((x, i) => thumbs.append(h('button', { class: 'cr-thumb' + (i === st.cur ? ' on' : ''), title: x.name, onclick: () => { st.cur = i; draw(); } },
+      st.imgs.forEach((x, i) => thumbs.append(h('button', { class: 'cr-thumb' + (i === st.cur ? ' on' : ''), title: x.name + (x.vers.length > 1 ? ` · ${x.vers.length} versies` : ''), onclick: () => { st.cur = i; draw(); } },
         h('img', { src: x.url, alt: '' }),
+        x.vers.length > 1 ? h('span', { class: 'cr-count' }, x.vers.length) : '',
         h('span', { class: 'rm', title: 'Verwijderen', onclick: e => { e.stopPropagation(); URL.revokeObjectURL(x.url); st.imgs.splice(i, 1); draw(); } }, '×'))));
       thumbs.append(h('button', { class: 'cr-add', title: 'Afbeeldingen toevoegen', html: icon('plus', 18), onclick: () => fileInp.click() }));
+      const total = st.imgs.reduce((n, x) => n + x.vers.length, 0);
       const dl = h('button', { class: 'btn primary', html: icon('download', 16) + 'Download' });
       dl.onclick = () => popover(dl, [
-        h('button', { class: 'opt', html: icon('image', 15) + 'Deze afbeelding', onclick: () => { closePop(); exportSet([[im, p]]); } }),
-        st.imgs.length > 1 ? h('button', { class: 'opt', html: icon('layers', 15) + `Alle ${st.imgs.length} afbeeldingen (zip)`, onclick: () => { closePop(); exportSet(st.imgs.map(x => [x, presets[clamp(x.preset, 0, presets.length - 1)]])); } }) : null,
-        h('button', { class: 'opt', html: icon('grid', 15) + 'Alles in álle formaten (zip)', onclick: () => { closePop(); exportSet(st.imgs.flatMap(x => presets.map(pp => [x, pp]))); } }),
+        h('button', { class: 'opt', html: icon('image', 15) + 'Alleen deze versie', onclick: () => { closePop(); exportSet([[im, v]]); } }),
+        im.vers.length > 1 ? h('button', { class: 'opt', html: icon('copy', 15) + `Alle ${im.vers.length} versies van deze afbeelding`, onclick: () => { closePop(); exportSet(im.vers.map(x => [im, x]), fileBase(im.name)); } }) : '',
+        st.imgs.length > 1 ? h('button', { class: 'opt', html: icon('layers', 15) + `Alles: ${st.imgs.length} afbeeldingen, ${total} bestanden (zip)`, onclick: () => { closePop(); exportSet(st.imgs.flatMap(x => x.vers.map(y => [x, y]))); } }) : '',
         h('hr'),
         h('button', { class: 'opt', html: icon('trash', 15) + 'Alles leegmaken', onclick: () => { closePop(); st.imgs.forEach(x => URL.revokeObjectURL(x.url)); st.imgs = []; draw(); } }),
       ]);
       root.append(h('div', { class: 'cr-foot' }, thumbs, h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' } }, info, dl)));
     };
-    const exportSet = async pairs => {
+    const exportSet = async (pairs, zipName) => {
       toast(pairs.length > 1 ? `Bezig met ${pairs.length} bestanden…` : 'Bezig…');
       const out = [], names = new Set();
-      for (const [im, p] of pairs) {
-        const blob = await renderCrop(im, p, cfg);
-        let n = cropName(cfg, im, p), k = 2; while (names.has(n)) n = n.replace(/(\.\w+)$/, `-${k++}$1`); names.add(n);
+      for (const [im, v] of pairs) {
+        const blob = await renderCrop(im, v, cfg);
+        let n = cropName(cfg, im, v), k = 2; while (names.has(n.toLowerCase())) n = cropName(cfg, im, v).replace(/(\.\w+)$/, `-${k++}$1`); names.add(n.toLowerCase());
         out.push({ name: n, blob });
       }
       if (out.length === 1) return download(out[0].name, out[0].blob);
       const files = await Promise.all(out.map(async o => ({ name: o.name, data: new Uint8Array(await o.blob.arrayBuffer()) })));
-      download(`bijgesneden-${new Date().toISOString().slice(0, 10)}.zip`, makeZip(files));
+      download(`${zipName || 'bijgesneden-' + new Date().toISOString().slice(0, 10)}.zip`, makeZip(files));
     };
     draw();
   },
