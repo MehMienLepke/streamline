@@ -2,7 +2,7 @@
    Streamline — instellingenpaneel
    ========================================================================== */
 let settingsTab = 'algemeen';
-const TABS = [['algemeen', 'Algemeen'], ['thema', 'Thema'], ['titels', 'Titels'], ['paginas', "Pagina's"], ['bestanden', 'Bestanden'], ['uitbr', 'Uitbreidingen'], ['updates', 'Updates'], ['over', 'Over']];
+const TABS = [['algemeen', 'Algemeen'], ['thema', 'Thema'], ['titels', 'Titels'], ['paginas', "Pagina's"], ['bestanden', 'Bestanden'], ['team', 'Team'], ['uitbr', 'Uitbreidingen'], ['updates', 'Updates'], ['over', 'Over']];
 
 function renderSettings() {
   const tabs = $('#settings-tabs'), body = $('#settings-body');
@@ -10,7 +10,7 @@ function renderSettings() {
   tabs.innerHTML = '';
   for (const [k, l] of TABS) tabs.append(h('button', { class: settingsTab === k ? 'on' : '', onclick: () => { settingsTab = k; renderSettings(); } }, l));
   body.innerHTML = '';
-  ({ algemeen: tabGeneral, thema: tabTheme, titels: tabTitles, paginas: tabPages, bestanden: tabFiles, uitbr: tabPlugins, updates: tabUpdates, over: tabAbout })[settingsTab](body);
+  ({ algemeen: tabGeneral, thema: tabTheme, titels: tabTitles, paginas: tabPages, bestanden: tabFiles, team: b => tabTeam(b), uitbr: tabPlugins, updates: tabUpdates, over: tabAbout })[settingsTab](body);
 }
 const sect = (title, ...kids) => h('div', { class: 'sect' }, h('h4', {}, title), ...kids);
 function segCtl(options, value, onPick) {

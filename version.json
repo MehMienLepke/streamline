@@ -1,6 +1,6 @@
 {
-  "version": "1.0.7",
-  "groot": false,
-  "notes": "Kniptool: formaten bewerken en snelkoppelingen bovenin, meerdere versies per afbeelding, en bestandsnamen met de maten erachter (bijv. foto-1080x1350.jpg).",
+  "version": "1.1.0",
+  "groot": true,
+  "notes": "Nieuw: samenwerken in een team. Maak een versleutelde teammap (bijv. op OneDrive) of sluit je aan bij een team. Team-tabblad met gedeelde taken, toewijzen met foto, e-mails met inhoud en bijlagen delen, meldingen bij nieuwe taken. Je eigen takenlijst toont teamtaken bovenaan en je kunt de volgorde zelf slepen.",
   "file": "streamline.html"
 }

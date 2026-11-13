@@ -365,23 +365,14 @@ reg({
 /* ---------- To do's ---------- */
 const PRIO = { hoog: 0, medium: 1, laag: 2 };
 const PRIO_LABEL = { hoog: 'Hoog', medium: 'Medium', laag: 'Laag' };
-function decodeMimeWords(s) {
-  return s.replace(/\?=\s+=\?/g, '?==?').replace(/=\?([^?]+)\?([BQbq])\?([^?]*)\?=/g, (m, cs, enc, txt) => {
-    try {
-      const bin = enc.toUpperCase() === 'B' ? atob(txt) : txt.replace(/_/g, ' ').replace(/=([0-9A-F]{2})/gi, (_, x) => String.fromCharCode(parseInt(x, 16)));
-      return new TextDecoder(cs).decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
-    } catch (e) { return txt; }
-  });
-}
 async function titlesFromDrop(dt) {
   const out = [];
   for (const f of [...(dt.files || [])]) {
     const n = f.name || '';
-    if (/\.eml$/i.test(n)) {
-      const head = (await f.slice(0, 64000).text()).split(/\r?\n\r?\n/)[0].replace(/\r?\n[ \t]+/g, ' ');
-      const m = /^Subject:\s*(.*)$/im.exec(head);
-      out.push(m ? decodeMimeWords(m[1]).trim() : n.replace(/\.eml$/i, ''));
-    } else out.push(n.replace(/\.(msg|eml|txt|url|html?)$/i, ''));
+    if (/\.(eml|msg)$/i.test(n)) {
+      try { const m = await MailParser.parseFile(f); out.push(m.subject || n.replace(/\.(eml|msg)$/i, '')); continue; } catch (e) {}
+    }
+    out.push(n.replace(/\.(msg|eml|txt|url|html?)$/i, ''));
   }
   if (!out.length) {
     const t = dt.getData('text/plain') || dt.getData('text/uri-list') || '';
@@ -390,14 +381,16 @@ async function titlesFromDrop(dt) {
   }
   return out.map(s => s.slice(0, 240)).filter(Boolean);
 }
+const DRAG_TYPE = 'application/x-streamline-todo';
 reg({
   type: 'todo', name: "To do's", desc: 'Taken met prioriteit en herinnering. Sleep een e-mail erin om er een taak van te maken', icon: 'checksquare', group: 'widgets',
   size: { w: 7, h: 9 }, min: { w: 3, h: 4 },
-  defaults: { title: "To do's", defaultPrio: 'medium', showDone: true },
+  defaults: { title: "To do's", defaultPrio: 'medium', showDone: true, showTeam: true },
   fields: [
     { key: 'title', label: 'Kop', type: 'text' },
     { key: 'defaultPrio', label: 'Standaard prioriteit', type: 'seg', options: [['hoog', 'Hoog'], ['medium', 'Medium'], ['laag', 'Laag']] },
     { key: 'showDone', label: 'Afgevinkte taken blijven zichtbaar (onderaan)', type: 'checkbox' },
+    { key: 'showTeam', label: 'Teamtaken die aan mij zijn toegewezen hier ook tonen', type: 'checkbox' },
   ],
   render(el, ctx) {
     const item = ctx.item, d = item.data; d.items = d.items || [];
@@ -406,46 +399,122 @@ reg({
     const pr = h('div', { class: 'prio', title: 'Prioriteit' });
     const drawPr = () => { pr.innerHTML = ''; for (const p of ['hoog', 'medium', 'laag']) pr.append(h('button', { class: prio === p ? 'on' : '', title: PRIO_LABEL[p], onclick: () => { prio = p; drawPr(); } }, h('i', { class: 'pc-' + p }))); };
     drawPr();
-    const add = (text, p = prio) => { if (!text) return; d.items.push({ id: uid(), text, prio: p, done: false, created: Date.now() }); ctx.save(); drawList(); };
+
+    /* Volgorde: eigen volgorde in d.order. Teamtaken komen er standaard bovenaan bij;
+       nieuwe eigen taken worden op prioriteit ingevoegd. Slepen past de volgorde aan. */
+    const teamTasks = () => (ctx.config.showTeam !== false && typeof TeamForTodo !== 'undefined') ? TeamForTodo.mine() : [];
+    const entries = () => {
+      const m = new Map();
+      for (const t of d.items) m.set('p:' + t.id, { key: 'p:' + t.id, t, prio: t.prio, done: !!t.done });
+      for (const t of teamTasks()) m.set('t:' + t.id, { key: 't:' + t.id, t, team: true, prio: t.prio || 'medium', done: !!t.done });
+      return m;
+    };
+    const insertByPrio = (key, p, map) => {
+      const i = d.order.findIndex(k => { const e = map.get(k); return e && !e.team && !e.done && PRIO[e.prio] > PRIO[p]; });
+      if (i < 0) d.order.push(key); else d.order.splice(i, 0, key);
+    };
+    const normalize = map => {
+      let dirty = false;
+      if (!Array.isArray(d.order)) {
+        d.order = [...map.values()].filter(e => !e.team).sort((a, b) => (PRIO[a.prio] - PRIO[b.prio]) || (a.t.created - b.t.created)).map(e => e.key);
+        dirty = true;
+      }
+      const before = d.order.length;
+      d.order = d.order.filter(k => map.has(k)); if (d.order.length !== before) dirty = true;
+      const known = new Set(d.order);
+      const newTeam = [...map.values()].filter(e => e.team && !known.has(e.key)).map(e => e.key);
+      if (newTeam.length) { d.order.unshift(...newTeam); dirty = true; }
+      for (const e of map.values()) if (!e.team && !known.has(e.key)) { insertByPrio(e.key, e.prio, map); dirty = true; }
+      if (dirty) ctx.save();
+    };
+    const add = (text, p = prio) => {
+      if (!text) return;
+      const t = { id: uid(), text, prio: p, done: false, created: Date.now() };
+      d.items.push(t); if (Array.isArray(d.order)) insertByPrio('p:' + t.id, p, entries());
+      ctx.save(); drawList();
+    };
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') { add(inp.value.trim()); inp.value = ''; } });
     const list = h('div', { class: 'todo-list' });
     const foot = h('div', { class: 'todo-foot' });
+    let dragKey = null;
     const drawList = () => {
       list.innerHTML = '';
-      const items = d.items.filter(t => ctx.config.showDone !== false || !t.done)
-        .sort((a, b) => (a.done - b.done) || (PRIO[a.prio] - PRIO[b.prio]) || (a.created - b.created));
-      for (const t of items) {
-        const tt = h('div', { class: 'tt', title: 'Dubbelklik om te bewerken' }, t.text);
-        tt.ondblclick = () => { tt.contentEditable = 'true'; tt.focus(); document.getSelection().selectAllChildren(tt); };
-        tt.onblur = () => { if (tt.isContentEditable) { tt.contentEditable = 'false'; const v = tt.textContent.trim(); if (v) { t.text = v; ctx.save(); } else tt.textContent = t.text; } };
-        tt.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); tt.blur(); } if (e.key === 'Escape') { tt.textContent = t.text; tt.blur(); } };
-        const bell = h('button', { class: 'mini' + (t.remindAt ? ' on' : ''), title: 'Herinnering', html: icon('bell', 15) });
-        bell.onclick = () => ctx.remind(bell, t.remindAt, ts => { t.remindAt = ts; t.reminded = false; ctx.save(); drawList(); });
-        list.append(h('div', { class: 'todo' + (t.done ? ' done' : '') },
-          h('span', { class: 'bar pc-' + t.prio }),
-          h('button', { class: 'cb', title: t.done ? 'Niet gedaan' : 'Gedaan', html: icon('check', 13), onclick: () => { t.done = !t.done; ctx.save(); drawList(); } }),
-          tt,
-          t.remindAt && !t.done ? h('span', { class: 'meta', title: 'Herinnering' }, fmtWhen(t.remindAt)) : null,
-          h('div', { class: 'ta' + (t.remindAt ? ' has' : '') },
-            h('button', { class: 'mini', title: 'Prioriteit wijzigen (nu: ' + PRIO_LABEL[t.prio] + ')', onclick: () => { t.prio = { hoog: 'medium', medium: 'laag', laag: 'hoog' }[t.prio]; ctx.save(); drawList(); } }, h('i', { class: 'pc-' + t.prio, style: { width: '10px', height: '10px', borderRadius: '50%', display: 'block' } })),
-            bell,
-            h('button', { class: 'mini', title: 'Verwijderen', html: icon('x', 15), onclick: () => { d.items.splice(d.items.indexOf(t), 1); ctx.save(); drawList(); } }))));
+      const map = entries(); normalize(map);
+      const ordered = d.order.map(k => map.get(k)).filter(Boolean);
+      const rows = [...ordered.filter(e => !e.done), ...ordered.filter(e => e.done && ctx.config.showDone !== false)];
+      for (const e of rows) {
+        const t = e.t;
+        let row;
+        if (e.team) {
+          row = h('div', { class: 'todo team' + (e.done ? ' done' : ''), 'data-key': e.key },
+            h('span', { class: 'bar pc-' + e.prio }),
+            h('button', { class: 'cb', title: e.done ? 'Niet klaar' : 'Klaar (voor het hele team)', html: icon('check', 13), onclick: () => TeamForTodo.toggle(t) }),
+            h('div', { class: 'tt clickable', title: 'Teamtaak openen', onclick: () => TeamForTodo.open(t.id) }, t.title),
+            h('span', { class: 'teamb', title: 'Teamtaak', html: icon('users', 13) }));
+        } else {
+          const tt = h('div', { class: 'tt', title: 'Dubbelklik om te bewerken' }, t.text);
+          tt.ondblclick = () => { tt.contentEditable = 'true'; tt.focus(); document.getSelection().selectAllChildren(tt); };
+          tt.onblur = () => { if (tt.isContentEditable) { tt.contentEditable = 'false'; const v = tt.textContent.trim(); if (v) { t.text = v; ctx.save(); } else tt.textContent = t.text; } };
+          tt.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); tt.blur(); } if (ev.key === 'Escape') { tt.textContent = t.text; tt.blur(); } };
+          const bell = h('button', { class: 'mini' + (t.remindAt ? ' on' : ''), title: 'Herinnering', html: icon('bell', 15) });
+          bell.onclick = () => ctx.remind(bell, t.remindAt, ts => { t.remindAt = ts; t.reminded = false; ctx.save(); drawList(); });
+          row = h('div', { class: 'todo' + (t.done ? ' done' : ''), 'data-key': e.key },
+            h('span', { class: 'bar pc-' + t.prio }),
+            h('button', { class: 'cb', title: t.done ? 'Niet gedaan' : 'Gedaan', html: icon('check', 13), onclick: () => { t.done = !t.done; ctx.save(); drawList(); } }),
+            tt,
+            t.remindAt && !t.done ? h('span', { class: 'meta', title: 'Herinnering' }, fmtWhen(t.remindAt)) : '',
+            h('div', { class: 'ta' + (t.remindAt ? ' has' : '') },
+              h('button', { class: 'mini', title: 'Prioriteit wijzigen (nu: ' + PRIO_LABEL[t.prio] + ')', onclick: () => {
+                t.prio = { hoog: 'medium', medium: 'laag', laag: 'hoog' }[t.prio];
+                d.order = d.order.filter(k => k !== e.key); insertByPrio(e.key, t.prio, entries());
+                ctx.save(); drawList();
+              } }, h('i', { class: 'pc-' + t.prio, style: { width: '10px', height: '10px', borderRadius: '50%', display: 'block' } })),
+              bell,
+              h('button', { class: 'mini', title: 'Verwijderen', html: icon('x', 15), onclick: () => { d.items.splice(d.items.indexOf(t), 1); ctx.save(); drawList(); } })));
+        }
+        if (!e.done) {
+          row.draggable = true;
+          row.prepend(h('span', { class: 'drag', title: 'Sleep om de volgorde te veranderen', html: icon('grip', 14) }));
+          row.addEventListener('dragstart', ev => { if (ev.target.closest('.tt[contenteditable="true"]')) return ev.preventDefault(); dragKey = e.key; ev.dataTransfer.setData(DRAG_TYPE, e.key); ev.dataTransfer.effectAllowed = 'move'; row.classList.add('dragged'); });
+          row.addEventListener('dragend', () => { dragKey = null; row.classList.remove('dragged'); $$('.todo.drop-before,.todo.drop-after', list).forEach(r => r.classList.remove('drop-before', 'drop-after')); });
+          row.addEventListener('dragover', ev => {
+            if (!ev.dataTransfer.types.includes(DRAG_TYPE) || !dragKey) return;
+            ev.preventDefault(); ev.stopPropagation();
+            const r = row.getBoundingClientRect(), after = ev.clientY > r.top + r.height / 2;
+            $$('.todo.drop-before,.todo.drop-after', list).forEach(x => x !== row && x.classList.remove('drop-before', 'drop-after'));
+            row.classList.toggle('drop-after', after); row.classList.toggle('drop-before', !after);
+          });
+          row.addEventListener('drop', ev => {
+            if (!ev.dataTransfer.types.includes(DRAG_TYPE) || !dragKey) return;
+            ev.preventDefault(); ev.stopPropagation();
+            const after = row.classList.contains('drop-after');
+            if (dragKey !== e.key) {
+              d.order = d.order.filter(k => k !== dragKey);
+              let i = d.order.indexOf(e.key); if (after) i++;
+              d.order.splice(i, 0, dragKey); ctx.save();
+            }
+            dragKey = null; drawList();
+          });
+        }
+        list.append(row);
       }
-      if (!items.length) list.append(h('div', { class: 'empty', html: icon('inbox', 26).replace('class="ic"', 'class="ic" style="margin:0 auto 6px;opacity:.5"') + 'Niets te doen. Typ hierboven of sleep een e-mail uit Outlook hierheen.' }));
-      const open = d.items.filter(t => !t.done).length, done = d.items.length - open;
+      if (!rows.length) list.append(h('div', { class: 'empty', html: icon('inbox', 26).replace('class="ic"', 'class="ic" style="margin:0 auto 6px;opacity:.5"') + 'Niets te doen. Typ hierboven of sleep een e-mail uit Outlook hierheen.' }));
+      const all = [...map.values()], open = all.filter(x => !x.done).length, done = d.items.filter(t => t.done).length;
       foot.innerHTML = '';
       foot.append(h('span', {}, `${open} open`), done ? h('button', { class: 'linkbtn', onclick: () => { d.items = d.items.filter(t => !t.done); ctx.save(); drawList(); } }, `${done} afgevinkt wissen`) : '');
     };
     drawList();
     el.append(h('div', { class: 'todo-add' }, inp, pr, h('button', { class: 'iconbtn', title: 'Toevoegen', html: icon('plus', 16), onclick: () => { add(inp.value.trim()); inp.value = ''; } })), list, foot);
     const card = el.closest('.card') || el;
-    card.addEventListener('dragover', e => { if (editing) return; e.preventDefault(); e.stopPropagation(); card.classList.add('dropping'); });
+    const internal = e => e.dataTransfer && [...e.dataTransfer.types].includes(DRAG_TYPE);
+    card.addEventListener('dragover', e => { if (editing || internal(e)) return; e.preventDefault(); e.stopPropagation(); card.classList.add('dropping'); });
     card.addEventListener('dragleave', e => { if (!card.contains(e.relatedTarget)) card.classList.remove('dropping'); });
     card.addEventListener('drop', async e => {
-      if (editing) return; e.preventDefault(); e.stopPropagation(); card.classList.remove('dropping');
+      if (editing || internal(e)) return; e.preventDefault(); e.stopPropagation(); card.classList.remove('dropping');
       const titles = await titlesFromDrop(e.dataTransfer);
       if (!titles.length) return toast('Ik kon hier geen titel uit halen');
-      titles.forEach(t => d.items.push({ id: uid(), text: t, prio: ctx.config.defaultPrio || 'medium', done: false, created: Date.now(), fromMail: true }));
+      const map = entries();
+      titles.forEach(t => { const it = { id: uid(), text: t, prio: ctx.config.defaultPrio || 'medium', done: false, created: Date.now(), fromMail: true }; d.items.push(it); map.set('p:' + it.id, { key: 'p:' + it.id, t: it, prio: it.prio }); if (Array.isArray(d.order)) insertByPrio('p:' + it.id, it.prio, map); });
       ctx.save(); drawList(); toast(titles.length === 1 ? 'To-do toegevoegd: ' + titles[0] : titles.length + " to do's toegevoegd");
     });
   },

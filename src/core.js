@@ -5,7 +5,7 @@
    zijn: GitHub (alleen om updates/widgets op te halen, er gaat niets heen),
    radiostreams, en websites/favicons die je zelf in een knop zet.
    ========================================================================== */
-const APP_VERSION = '1.0.7';
+const APP_VERSION = '1.1.0';
 const DEFAULT_REPO = 'MehMienLepke/streamline';
 const SCHEMA = 1;
 const $ = (s, r = document) => r.querySelector(s);
@@ -294,6 +294,7 @@ function defaultState(title, preset = 'licht') {
     pages: [home, work], global: [], activePage: home.id,
     update: { repo: DEFAULT_REPO, branch: 'main', notify: 'major', htmlName: 'streamline.html' },
     plugins: [],
+    team: null,
   };
   s.global.push(mk('nav', 0, 0, 7, 2, { orientation: 'h', display: 'both' }));
   home.items.push(
@@ -323,6 +324,7 @@ function migrate(s) {
   out.pages = Array.isArray(s.pages) && s.pages.length ? s.pages : d.pages;
   out.global = Array.isArray(s.global) ? s.global : d.global;
   out.plugins = Array.isArray(s.plugins) ? s.plugins : [];
+  out.team = s.team && s.team.id ? s.team : null;
   for (const it of allItems(out)) {
     const c = it.config || {};
     if (c.layout && !c.labelPos) c.labelPos = c.layout === 'row' ? 'right' : 'bottom'; // oude 'Indeling' omzetten
@@ -1011,6 +1013,7 @@ async function switchFile(name) {
   const st = migrate(await readJSON(name));
   S = st; FS.file = name; S.meta.title = fileTitle(name); await IDB.set('lastFile', name); cacheLocal();
   applyTheme(); renderAll(); if (editing) { renderRepo(); renderSettings(); }
+  teamStart();
   renderTop(); toast('Geopend: ' + currentTitle());
 }
 function showBanner(html, btnLabel, onClick) {
@@ -1063,6 +1066,7 @@ function start() {
   checkReminders(); setInterval(checkReminders, 10000);
   setInterval(() => { for (const it of [...S.global, ...currentPage().items]) if (it.type === 'title' && /\{(groet|tijd|datum)\}/i.test(it.config.text)) buildItem(it); }, 60000);
   if (S.update.repo) setTimeout(() => checkUpdate(false), 1500);
+  teamStart();
 }
 async function boot() {
   try { const t = JSON.parse(localStorage.getItem('streamline.theme') || 'null'); if (t) for (const [k, v] of Object.entries({ '--bg': t.t.bg, '--ink': t.t.ink, '--surface': t.t.surface })) document.documentElement.style.setProperty(k, v); } catch (e) {}

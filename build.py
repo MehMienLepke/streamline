@@ -6,7 +6,7 @@ root = pathlib.Path(__file__).parent
 src = root / 'src'
 core = (src / 'core.js').read_text(encoding='utf-8')
 version = re.search(r"APP_VERSION = '([^']+)'", core).group(1)
-js = '\n'.join((src / f).read_text(encoding='utf-8') for f in ['icons.js', 'core.js', 'settings.js', 'widgets.js'])
+js = '\n'.join((src / f).read_text(encoding='utf-8') for f in ['icons.js', 'core.js', 'settings.js', 'widgets.js', 'mail.js', 'team.js'])
 html = (src / 'template.html').read_text(encoding='utf-8')
 html = html.replace('/*CSS*/', (src / 'styles.css').read_text(encoding='utf-8')).replace('/*JS*/', js).replace('/*VERSION*/', version)
 (root / 'streamline.html').write_text(html, encoding='utf-8')

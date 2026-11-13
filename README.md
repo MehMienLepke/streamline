@@ -24,6 +24,9 @@ request except reading this repository for updates and widgets.
 - Snap-to-grid layout; every item can be moved, resized, copied and locked
 - Light, dark and four more themes, or compose your own
 - Several settings files per folder; copy widgets, boxes or whole pages between them
+- Team workspace in a shared (e.g. OneDrive) folder: end-to-end encrypted with a team
+  password (AES-256-GCM, PBKDF2), shared task list with assignees, Outlook mail
+  drag-and-drop including body and attachments, per-member files so syncing never conflicts
 - One-click updates from GitHub that never touch your own data
 - Add your own widgets via `widgets/registry.json` (see `widgets/klok.js`)
 - Optional browser extension (`helper-extensie/`) that lets action buttons type,
