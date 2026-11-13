@@ -45,7 +45,9 @@ body.editing .edit-only{display:inline-flex!important}
 #banner button{margin-left:auto}
 
 /* ---------- canvas & grid ---------- */
-#canvas{position:relative;margin:6px 32px 48px;min-height:calc(100vh - 140px)}
+#stage{position:relative;margin:6px 32px 48px;min-height:calc(100vh - 140px)}
+#canvas{position:relative;transform-origin:0 0}
+#stage.scaled{overflow:clip;overflow-clip-margin:40px;min-height:0}
 body.editing #canvas{background-image:var(--gridimg);background-repeat:repeat;border-radius:var(--r-sm)}
 /* Lagen: een onderdeel maakt zelf geen eigen laag, zodat de greep en knoppen van een vak
    altijd bóven alle widgets liggen, terwijl het vak zelf altijd onderop ligt. */

@@ -1,6 +1,6 @@
 {
-  "version": "1.2.0",
-  "groot": true,
-  "notes": "Mails tonen nu met hun afbeeldingen in de tekst; alleen echte bijlagen zijn bijlagen. Bijlagen bekijken in een pop-up (ook Word, Excel, PowerPoint, PDF) en alles in één keer downloaden. Meerdere personen per taak. Gedeelde teamnotities. Uitnodiging als een collega een gedeelde module toevoegt. Nieuwe widget: Afbeelding.",
+  "version": "1.2.1",
+  "groot": false,
+  "notes": "Het dashboard schaalt nu mee met je scherm, zodat het er op elk scherm hetzelfde uitziet. Kies bij Instellingen → Algemeen → Schermgrootte: Passend in de breedte, Alles in beeld, of Uit.",
   "file": "streamline.html"
 }

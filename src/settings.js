@@ -40,6 +40,16 @@ function tabGeneral(b) {
           oninput: e => { S.buttons.fontSize = +e.target.value; e.target.previousSibling.textContent = `Tekstgrootte van alle knoppen: ${S.buttons.fontSize}px`; layout(); },
           onchange: () => setGlobalButtonSize() })),
       h('p', { class: 'hint' }, 'Een vak of een losse knop kan een eigen tekstgrootte hebben; die gaat dan voor. Bij een wijziging hier vraagt Streamline of je die eigen instellingen ook wilt aanpassen.')),
+    sect('Schermgrootte',
+      h('div', { class: 'field' }, h('label', {}, 'Meeschalen met het scherm'),
+        segCtl([['width', 'Passend in de breedte'], ['fit', 'Alles in beeld'], ['off', 'Uit']], scaleMode(), v => { S.grid.scale = v; save(); layout(); renderSettings(); })),
+      h('p', { class: 'hint' }, scaleMode() === 'fit' ? 'De hele pagina past op je scherm, zonder te scrollen. Bij veel inhoud wordt alles kleiner (tot de helft).'
+        : scaleMode() === 'width' ? 'Het dashboard wordt als geheel groter of kleiner, zodat de verhoudingen op elk scherm hetzelfde blijven.'
+        : 'Geen schaal: kolommen worden breder of smaller, rijen en tekst blijven even groot.'),
+      scaleMode() !== 'off' ? [
+        h('div', { class: 'list-row' }, h('span', { html: icon('monitor', 16) }), h('div', { class: 'grow' }, `Ontwerpbreedte ${designWidth()} px · nu ${Math.round(SCALE * 100)}%`),
+          h('button', { class: 'btn sm', onclick: () => { S.grid.designWidth = Math.round(stage().clientWidth); save(); layout(); renderSettings(); toast('Dit scherm is nu het uitgangspunt (100%)'); } }, 'Dit scherm als uitgangspunt')),
+        h('p', { class: 'hint' }, 'De ontwerpbreedte is het scherm waarop je je dashboard indeelt. Op dat scherm is alles 100%; op andere schermen schaalt het mee.')] : null),
     sect('Raster',
       h('div', { class: 'field' }, h('label', {}, `Aantal kolommen: ${S.grid.cols}`), h('input', { type: 'range', min: 12, max: 48, step: 2, value: S.grid.cols, onchange: e => { const old = S.grid.cols, nw = +e.target.value; rescaleGrid(old, nw); renderSettings(); } })),
       h('div', { class: 'field' }, h('label', {}, `Rijhoogte: ${S.grid.rowH}px`), h('input', { type: 'range', min: 20, max: 72, step: 2, value: S.grid.rowH, oninput: e => { S.grid.rowH = +e.target.value; e.target.previousSibling.textContent = `Rijhoogte: ${S.grid.rowH}px`; layout(); save(); } })),

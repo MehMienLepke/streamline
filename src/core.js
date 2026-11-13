@@ -5,7 +5,7 @@
    zijn: GitHub (alleen om updates/widgets op te halen, er gaat niets heen),
    radiostreams, en websites/favicons die je zelf in een knop zet.
    ========================================================================== */
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 const DEFAULT_REPO = 'MehMienLepke/streamline';
 const SCHEMA = 1;
 const $ = (s, r = document) => r.querySelector(s);
@@ -427,9 +427,39 @@ function buildItem(item) {
     h('div', { class: 'resize', title: 'Sleep om de grootte te wijzigen' }),
     h('div', { class: 'size-badge' })));
 }
+/* Meeschalen met het scherm: het dashboard wordt ingedeeld op een vaste 'ontwerpbreedte'
+   en daarna als geheel vergroot of verkleind, zodat de verhoudingen op elk scherm gelijk blijven.
+   - 'width': passend in de breedte (scrollen in de hoogte blijft mogelijk)
+   - 'fit':   de hele pagina in beeld, zonder te scrollen (tot een minimum van 50%)
+   - 'off':   geen schaal; kolommen worden breder of smaller, rijen blijven even hoog */
+let SCALE = 1, scaleLocked = false;
+const stage = () => $('#stage');
+function scaleMode() { return S.grid.scale || 'width'; }
+function designWidth() {
+  if (!S.grid.designWidth) { S.grid.designWidth = Math.round(stage().clientWidth) || 1376; save(); }
+  return S.grid.designWidth;
+}
 function computeGeo() {
-  const g = S.grid, W = canvas().clientWidth;
+  const g = S.grid, W = scaleMode() === 'off' ? stage().clientWidth : designWidth();
   geo = { gap: g.gap, rh: g.rowH, cw: (W - g.gap * (g.cols - 1)) / g.cols };
+}
+function applyScale(contentH) {
+  const st = stage(), cv = canvas(), mode = scaleMode();
+  if (mode === 'off') { SCALE = 1; cv.style.transform = ''; cv.style.width = ''; cv.style.marginLeft = ''; st.classList.remove('scaled'); st.style.height = ''; return; }
+  const W0 = designWidth(), avail = st.clientWidth;
+  let k = avail / W0;
+  if (mode === 'fit') {
+    const top = st.getBoundingClientRect().top + scrollY;
+    const availH = innerHeight - top - (parseFloat(getComputedStyle(st).marginBottom) || 0) - 8;
+    if (contentH > 0) k = Math.min(k, availH / contentH);
+  }
+  k = clamp(k, .5, 3);
+  SCALE = k;
+  cv.style.width = W0 + 'px';
+  cv.style.transform = k === 1 ? '' : `scale(${k})`;
+  cv.style.marginLeft = mode === 'fit' ? Math.max(0, (avail - W0 * k) / 2) + 'px' : '';
+  st.classList.add('scaled');
+  st.style.height = Math.ceil(cv.offsetHeight * k) + 'px';
 }
 /* Elk onderdeel ligt in een 'frame': het paginaraster, of het eigen (kleinere) raster
    van een vak met ruimte binnenin. Posities blijven altijd in paginavakjes opgeslagen;
@@ -492,6 +522,8 @@ function layout() {
     bottom = Math.max(bottom, r.top + r.height);
   }
   canvas().style.height = (bottom + (editing ? 8 : 1) * (geo.rh + geo.gap)) + 'px';
+  if (scaleLocked) stage().style.height = Math.ceil(canvas().offsetHeight * SCALE) + 'px'; // tijdens bewerken in 'alles in beeld': schaal vasthouden
+  else applyScale(bottom + geo.gap);
   if (editing) setGridImage();
   requestAnimationFrame(() => $$('.lb', canvas()).forEach(b => window.fitButton && fitButton(b)));
 }
@@ -524,6 +556,7 @@ function goPage(id) {
 /* ---------- bewerkmodus ---------- */
 function setEditing(on) {
   editing = on;
+  scaleLocked = on && scaleMode() === 'fit';
   document.body.classList.toggle('editing', on);
   $('#gear').classList.toggle('on', on);
   showPanel('repo', on);
@@ -567,7 +600,7 @@ function initDrag() {
     itemEl.setPointerCapture(e.pointerId);
     let moved = false;
     const move = ev => {
-      const dx = (ev.clientX - sx) / (f0.cw + f0.gap), dy = (ev.clientY - sy) / (f0.rh + f0.gap);
+      const dx = (ev.clientX - sx) / SCALE / (f0.cw + f0.gap), dy = (ev.clientY - sy) / SCALE / (f0.rh + f0.gap);
       if (resize) {
         item.w = clamp(Math.round(o.w + dx), min.w, Math.min(max.w, S.grid.cols - item.x));
         item.h = clamp(Math.round(o.h + dy), min.h, max.h);
