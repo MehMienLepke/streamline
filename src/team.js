@@ -49,7 +49,7 @@ const Team = {
   error: '',
   mine: null,                               // { profile, records, locks, updated }
   others: new Map(),                        // bestandsnaam -> { stamp, data }
-  tasks: [], members: new Map(), locks: new Map(),
+  tasks: [], notes: [], modules: [], records: new Map(), members: new Map(), locks: new Map(),
   timer: null, writeTimer: null, firstMerge: true, lastWriteError: 0,
 };
 const TEAM_PROFILE_COLORS = ['#2E5E4E', '#A4532C', '#3D5A80', '#7A4E8C', '#B5651D', '#2F6F73', '#8C3B4E', '#5C6B2E'];
@@ -133,7 +133,7 @@ function mergeAll() {
       }
     }
   }
-  const tasks = [];
+  const tasks = [], notes = [], modules = [], recs = new Map();
   for (const [id, best] of fields) {
     const t = { id, _f: best, conflicts: [] };
     for (const [k, fv] of Object.entries(best)) t[k] = fv.v;
@@ -142,14 +142,21 @@ function mergeAll() {
       const w = best[k];
       for (const fv of list) if (fv !== w && fv.by !== w.by && fv.t > (w.base || 0) && JSON.stringify(fv.v) !== JSON.stringify(w.v) && !(t.ack || {})[k + ':' + fv.t]) t.conflicts.push({ field: k, by: fv.by, v: fv.v, t: fv.t });
     }
-    if (!t.deleted && t.title !== undefined) tasks.push(t);
+    recs.set(id, t);
+    const kind = t.kind || (t.title !== undefined ? 'task' : '');
+    if (t.deleted) continue;
+    if (kind === 'task' && t.title !== undefined) { t.assignees = Array.isArray(t.assignees) ? t.assignees : (t.assignee ? [t.assignee] : []); t.module = t.module || 'main'; tasks.push(t); }
+    else if (kind === 'note') notes.push(t);
+    else if (kind === 'module') modules.push(t);
   }
-  Team.tasks = tasks;
+  Team.records = recs; Team.tasks = tasks; Team.notes = notes;
+  Team.modules = [{ id: 'main', kind: 'module', type: 'teamtasks', title: 'Teamtaken', createdBy: Team.meta?.creator, created: Team.meta?.created || 0, virtual: true }, ...modules];
   checkAssigned();
+  setTimeout(checkModulePrompt, 0);
 }
 function teamSet(id, changes, bases) {
   const me = meId(); const rec = (Team.mine.records[id] ||= { f: {} });
-  const cur = Team.tasks.find(t => t.id === id);
+  const cur = Team.records?.get(id);
   for (const [k, v] of Object.entries(changes)) {
     const f = cur?._f?.[k];
     const t = Math.max(Date.now(), (f?.t || 0) + 1);
@@ -159,9 +166,11 @@ function teamSet(id, changes, bases) {
 }
 function teamAddTask(fields) {
   const id = uid();
-  teamSet(id, { title: fields.title, prio: fields.prio || 'medium', done: false, assignee: fields.assignee || null, createdBy: meId(), created: Date.now(), mail: fields.mail || null });
+  const as = fields.assignees || [];
+  teamSet(id, { kind: 'task', module: fields.module || 'main', title: fields.title, prio: fields.prio || 'medium', done: false, assignees: as, assignee: as[0] || null, createdBy: meId(), created: Date.now(), mail: fields.mail || null });
   return id;
 }
+const setAssignees = (id, list) => teamSet(id, { assignees: list, assignee: list[0] || null });
 
 /* ---------- synchroniseren ---------- */
 async function teamSync() {
@@ -208,7 +217,7 @@ function setTeamStatus(st, err) {
 }
 async function teamStart() {
   clearInterval(Team.timer);
-  Object.assign(Team, { dir: null, perm: false, meta: null, metaStamp: 0, key: null, kid: null, keys: {}, mine: null, others: new Map(), tasks: [], members: new Map(), locks: new Map(), firstMerge: true });
+  Object.assign(Team, { dir: null, perm: false, meta: null, metaStamp: 0, key: null, kid: null, keys: {}, mine: null, others: new Map(), tasks: [], notes: [], modules: [], records: new Map(), members: new Map(), locks: new Map(), firstMerge: true });
   if (!teamOn()) { Team.status = 'off'; return; }
   Team.dir = (await IDB.get('teamdir:' + S.team.id)) || null;
   if (!Team.dir) { setTeamStatus('perm', 'nodir'); return; }
@@ -249,7 +258,7 @@ async function teamReconnect() {
 function checkAssigned() {
   if (!S.team) return;
   const seen = new Set(S.team.seen || []);
-  const mine = Team.tasks.filter(t => t.assignee === meId() && !t.done);
+  const mine = Team.tasks.filter(t => t.assignees.includes(meId()) && !t.done);
   const fresh = mine.filter(t => !seen.has(t.id));
   const first = S.team.seenInit !== true;
   if (first) { S.team.seenInit = true; save(); }
@@ -258,17 +267,17 @@ function checkAssigned() {
   save();
   if (first) { toast(`Er staa${fresh.length === 1 ? 't 1 teamtaak' : 'n ' + fresh.length + ' teamtaken'} op jouw naam`); return; }
   for (const t of fresh) {
-    const from = t._f?.assignee?.by;
+    const from = t._f?.assignees?.by || t._f?.assignee?.by;
     if (from === meId()) continue; // zelf aan jezelf toegewezen
-    notifyAssigned(t, memberName(from));
+    notifyAssigned(t, memberName(from), t.assignees.length > 1 ? t.assignees.filter(x => x !== meId()).map(memberName) : []);
   }
 }
-function notifyAssigned(t, fromName) {
+function notifyAssigned(t, fromName, withOthers = []) {
   beep();
   try { if ('Notification' in window && Notification.permission === 'granted') new Notification('Streamline — nieuwe teamtaak', { body: `${fromName}: ${t.title}`, tag: 'team-' + t.id }); } catch (e) {}
   const box = h('div', { class: 'alarm', role: 'alert' });
   const close = () => box.remove();
-  box.append(h('h4', { html: icon('users', 18) + 'Nieuwe teamtaak' }), h('p', {}, h('b', {}, fromName), ' heeft je een taak gegeven:', h('br'), t.title),
+  box.append(h('h4', { html: icon('users', 18) + 'Nieuwe teamtaak' }), h('p', {}, h('b', {}, fromName), ' heeft je een taak gegeven', withOthers.length ? ` (samen met ${withOthers.join(', ')})` : '', ':', h('br'), t.title),
     h('div', { class: 'row' },
       h('button', { class: 'btn primary sm', onclick: () => { close(); openTeamTask(t.id); } }, 'Bekijken'),
       h('button', { class: 'btn sm', onclick: close }, 'OK')));
@@ -285,22 +294,37 @@ function avatarEl(id, size = 26) {
   if (m?.avatar) el.append(h('img', { src: m.avatar, alt: '' })); else el.textContent = name.trim().slice(0, 1).toUpperCase();
   return el;
 }
+function avatarStack(ids, size = 24, max = 3) {
+  const el = h('span', { class: 'avstack', title: ids.map(memberName).join(', ') });
+  ids.slice(0, max).forEach(id => el.append(avatarEl(id, size)));
+  if (ids.length > max) el.append(h('span', { class: 'av more', style: { width: size + 'px', height: size + 'px', fontSize: Math.round(size * .4) + 'px' } }, '+' + (ids.length - max)));
+  return el;
+}
 function membersList() {
   const list = [...Team.members.values()];
   if (Team.mine?.profile && !list.some(m => m.id === meId())) list.push(Team.mine.profile);
   return list.sort((a, b) => (a.id === meId() ? -1 : b.id === meId() ? 1 : String(a.name).localeCompare(b.name)));
 }
-function assigneePicker(anchor, current, cb) {
-  popover(anchor, [
-    h('div', { class: 'lbl', style: { padding: '4px 10px 6px' } }, 'Toewijzen aan'),
-    membersList().map(m => h('button', { class: 'opt' + (m.id === current ? ' cr-cur' : ''), onclick: () => { closePop(); cb(m.id); } }, avatarEl(m.id, 28), h('span', { class: 'grow' }, m.name + (m.id === meId() ? ' (jij)' : '')))),
-    current ? [h('hr'), h('button', { class: 'opt', html: icon('x', 15) + 'Niemand', onclick: () => { closePop(); cb(null); } })] : null,
-  ]);
+/* Meerdere personen kiezen: elke klik zet iemand aan of uit, het venster blijft open. */
+function assigneesPicker(anchor, current, cb) {
+  let sel = [...(current || [])];
+  const list = h('div');
+  const draw = () => {
+    list.innerHTML = '';
+    for (const m of membersList()) {
+      const on = sel.includes(m.id);
+      list.append(h('button', { class: 'opt' + (on ? ' cr-cur' : ''), onclick: () => { sel = on ? sel.filter(x => x !== m.id) : [...sel, m.id]; draw(); cb(sel); } },
+        avatarEl(m.id, 28), h('span', { class: 'grow' }, m.name + (m.id === meId() ? ' (jij)' : '')), h('span', { class: 'pick' + (on ? ' on' : ''), html: on ? icon('check', 14) : '' })));
+    }
+  };
+  draw();
+  popover(anchor, [h('div', { class: 'lbl', style: { padding: '4px 10px 6px' } }, 'Toewijzen aan (meerdere kan)'), list, h('hr'),
+    h('button', { class: 'opt', html: icon('check', 15) + 'Klaar', onclick: closePop })]);
 }
 const teamRefresh = debounce(() => {
   if (!S) return;
   for (const it of [...S.global, ...currentPage().items]) {
-    if (!['todo', 'teamtasks', 'teammembers'].includes(it.type)) continue;
+    if (!['todo', 'teamtasks', 'teammembers', 'teamnotes'].includes(it.type)) continue;
     const el = els.get(it.id); if (!el) continue;
     const a = document.activeElement;
     if (a && el.contains(a) && a.matches('[contenteditable="true"]')) { a.addEventListener('blur', () => teamRefresh(), { once: true }); continue; }
@@ -320,6 +344,12 @@ function teamStatusBox(el) {
   }[Team.status] || ['clock', 'Team laden…', '', null];
   el.append(h('div', { class: 'missing' }, h('span', { html: icon(msg[0], 26) }), h('b', {}, msg[1]), h('span', {}, msg[2]), msg[3] ? h('button', { class: 'btn primary sm', onclick: msg[4] }, msg[3]) : null));
 }
+function moduleOf(id) { return Team.modules.find(m => m.id === (id || 'main')); }
+function moduleGone(el, id) {
+  const r = Team.records.get(id);
+  el.append(h('div', { class: 'missing' }, h('span', { html: icon('trash', 24) }), h('b', {}, 'Deze gedeelde module is verwijderd'),
+    h('span', {}, r ? `${memberName(r._f?.deleted?.by)} heeft hem voor iedereen verwijderd. Je kunt deze widget weghalen via het tandwiel.` : 'Hij bestaat niet (meer) in dit team.')));
+}
 
 /* ---------- teamtaak openen / bewerken (met vergrendeling) ---------- */
 function setLock(id, on) {
@@ -327,12 +357,33 @@ function setLock(id, on) {
   if (on) Team.mine.locks[id] = Date.now() + LOCK_MS; else delete Team.mine.locks[id];
   writeMine();
 }
-async function downloadAttachment(a) {
-  try {
-    const bytes = new Uint8Array(await (await (await tGet('bijlagen/' + a.id + '.bin')).getFile()).arrayBuffer());
-    const key = Team.keys[a.kid]; if (!key) throw new Error('sleutel ontbreekt');
-    download(a.name, new Blob([await TC.dec(key, bytes)], { type: a.type || 'application/octet-stream' }));
-  } catch (e) { toast(e.name === 'NotFoundError' ? 'Bijlage nog niet binnen — OneDrive is waarschijnlijk nog aan het synchroniseren' : 'Bijlage openen mislukt: ' + e.message, 5000); }
+async function loadTeamFile(a) {
+  const bytes = new Uint8Array(await (await (await tGet('bijlagen/' + a.id + '.bin')).getFile()).arrayBuffer());
+  const key = Team.keys[a.kid]; if (!key) throw new Error('De sleutel voor deze bijlage ontbreekt');
+  return TC.dec(key, bytes);
+}
+async function inlineMap(mail) {
+  const map = {};
+  for (const i of mail.inline || []) { try { map[i.cid] = 'data:' + (i.type || 'image/png') + ';base64,' + B64.enc(await loadTeamFile(i)); } catch (e) {} }
+  return map;
+}
+function mailSection(mail) {
+  const atts = mail.attachments || [];
+  const view = h('div', { class: 'mailview' });
+  if (mail.html) {
+    view.append(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Mail laden…'));
+    inlineMap(mail).then(map => { view.innerHTML = ''; view.append(mailFrame(mail.html, map)); });
+  } else view.append(mail.body ? h('pre', { class: 'mailbody' }, mail.body) : h('div', { class: 'hint', style: { padding: '10px 0 0' } }, 'Alleen de titel is gedeeld.'));
+  return h('div', { class: 'sect', style: { marginTop: '14px' } }, h('h4', {}, 'E-mail'),
+    h('div', { class: 'mailbox' },
+      mail.from ? h('div', {}, h('span', { class: 'lbl' }, 'Van: '), mail.from) : null,
+      mail.date ? h('div', {}, h('span', { class: 'lbl' }, 'Datum: '), new Date(mail.date).toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' })) : null,
+      view),
+    atts.length ? h('div', { class: 'atts' },
+      h('span', { class: 'lbl', style: { width: '100%' } }, `${atts.length} bijlage${atts.length === 1 ? '' : 'n'} — klik om te bekijken`),
+      atts.map((a, i) => h('button', { class: 'att', title: 'Bekijken', onclick: () => openAttachmentViewer(atts, i, loadTeamFile) }, h('span', { html: icon(ICON_FOR(attType(a)), 16) }), h('span', { class: 'nm' }, a.name), h('span', { class: 'cr-info' }, fmtSize(a.size)))),
+      atts.length > 1 ? h('button', { class: 'btn sm', onclick: () => downloadAllAttachments(atts, loadTeamFile) }, h('span', { html: icon('download', 14) }), 'Alle bijlagen downloaden')
+        : h('button', { class: 'btn sm', onclick: async () => { try { download(atts[0].name, new Blob([await loadTeamFile(atts[0])], { type: attType(atts[0]) })); } catch (e) { toast('Downloaden mislukt: ' + e.message); } } }, h('span', { html: icon('download', 14) }), 'Downloaden')) : null);
 }
 function openTeamTask(id) {
   const t = Team.tasks.find(x => x.id === id);
@@ -340,19 +391,22 @@ function openTeamTask(id) {
   const lock = Team.locks.get(id);
   const ro = !!lock && lock.until > Date.now();
   const bases = Object.fromEntries(Object.entries(t._f).map(([k, f]) => [k, f.t]));
-  const draft = { title: t.title, prio: t.prio, assignee: t.assignee, done: !!t.done };
+  const draft = { title: t.title, prio: t.prio, assignees: [...t.assignees], done: !!t.done };
+  const FIELD = { title: 'de titel', prio: 'de prioriteit', assignees: 'de toewijzing', assignee: 'de toewijzing', done: 'de status' };
+  const showVal = c => c.field === 'assignees' ? (c.v || []).map(memberName).join(', ') || 'niemand' : c.field === 'assignee' ? memberName(c.v) : c.field === 'done' ? (c.v ? 'klaar' : 'open') : c.v;
   const body = h('div');
   if (ro) body.append(h('div', { class: 'list-row', style: { marginBottom: '12px' } }, h('span', { html: icon('lock', 16) }), h('span', {}, h('b', {}, memberName(lock.by)), ' is deze taak nu aan het bewerken. Je kunt hem bekijken; wijzigen kan zodra die klaar is.')));
-  if (t.conflicts.length) body.append(h('div', { class: 'list-row', style: { marginBottom: '12px', outline: '2px solid var(--mid)' } }, h('span', { html: icon('alert', 16), style: { color: 'var(--mid)' } }),
-    h('div', { class: 'grow' }, h('b', {}, 'Tegelijk gewijzigd. '), t.conflicts.map(c => `${memberName(c.by)} veranderde ${({ title: 'de titel', prio: 'de prioriteit', assignee: 'de toewijzing', done: 'de status' })[c.field] || c.field} naar “${c.field === 'assignee' ? memberName(c.v) : c.field === 'done' ? (c.v ? 'klaar' : 'open') : c.v}”`).join('; ') + '. De nieuwste wijziging is bewaard.'),
+  const conf = t.conflicts.filter(c => c.field !== 'assignee');
+  if (conf.length) body.append(h('div', { class: 'list-row', style: { marginBottom: '12px', outline: '2px solid var(--mid)' } }, h('span', { html: icon('alert', 16), style: { color: 'var(--mid)' } }),
+    h('div', { class: 'grow' }, h('b', {}, 'Tegelijk gewijzigd. '), conf.map(c => `${memberName(c.by)} veranderde ${FIELD[c.field] || c.field} naar “${showVal(c)}”`).join('; ') + '. De nieuwste wijziging is bewaard.'),
     ro ? null : h('button', { class: 'btn sm', onclick: () => { const ack = { ...(t.ack || {}) }; t.conflicts.forEach(c => ack[c.field + ':' + c.t] = 1); teamSet(id, { ack }); m.close(); } }, 'Begrepen')));
   const title = h('input', { class: 'inp', value: draft.title, disabled: ro, oninput: e => draft.title = e.target.value });
   const prio = h('div', { class: 'seg' });
   const drawPrio = () => { prio.innerHTML = ''; for (const p of ['hoog', 'medium', 'laag']) prio.append(h('button', { class: draft.prio === p ? 'on' : '', disabled: ro, onclick: () => { draft.prio = p; drawPrio(); } }, h('i', { class: 'pc-' + p, style: { width: '9px', height: '9px', borderRadius: '50%', display: 'inline-block', marginRight: '6px' } }), PRIO_LABEL[p])); };
   drawPrio();
   const asg = h('button', { class: 'btn', disabled: ro });
-  const drawAsg = () => { asg.innerHTML = ''; asg.append(draft.assignee ? avatarEl(draft.assignee, 22) : h('span', { html: icon('user', 16) }), draft.assignee ? memberName(draft.assignee) : 'Niemand'); };
-  asg.onclick = () => assigneePicker(asg, draft.assignee, v => { draft.assignee = v; drawAsg(); });
+  const drawAsg = () => { asg.innerHTML = ''; if (draft.assignees.length) asg.append(avatarStack(draft.assignees, 22, 4), draft.assignees.length === 1 ? memberName(draft.assignees[0]) : `${draft.assignees.length} personen`); else asg.append(h('span', { html: icon('user', 16) }), 'Niemand'); };
+  asg.onclick = () => assigneesPicker(asg, draft.assignees, v => { draft.assignees = v; drawAsg(); });
   drawAsg();
   body.append(
     h('div', { class: 'field' }, h('label', {}, 'Taak'), title),
@@ -361,15 +415,7 @@ function openTeamTask(id) {
       h('div', { class: 'field' }, h('label', {}, 'Toegewezen aan'), asg),
       h('label', { class: 'check', style: { marginBottom: '16px' } }, h('input', { type: 'checkbox', checked: draft.done, disabled: ro, onchange: e => draft.done = e.target.checked }), 'Klaar')),
     h('div', { class: 'hint' }, `Aangemaakt door ${memberName(t.createdBy)} op ${new Date(t.created).toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' })}`));
-  if (t.mail) {
-    const mail = t.mail;
-    body.append(h('div', { class: 'sect', style: { marginTop: '14px' } }, h('h4', {}, 'E-mail'),
-      h('div', { class: 'mailbox' },
-        mail.from ? h('div', {}, h('span', { class: 'lbl' }, 'Van: '), mail.from) : null,
-        mail.date ? h('div', {}, h('span', { class: 'lbl' }, 'Datum: '), new Date(mail.date).toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' })) : null,
-        mail.body ? h('pre', { class: 'mailbody' }, mail.body) : h('div', { class: 'hint' }, 'Alleen de titel is gedeeld.')),
-      (mail.attachments || []).length ? h('div', { class: 'atts' }, mail.attachments.map(a => h('button', { class: 'btn sm', title: 'Downloaden', onclick: () => downloadAttachment(a) }, h('span', { html: icon('download', 14) }), a.name, h('span', { class: 'cr-info' }, ' ' + fmtSize(a.size))))) : null));
-  }
+  if (t.mail) body.append(mailSection(t.mail));
   let lockTimer = null;
   if (!ro) { setLock(id, true); lockTimer = setInterval(() => setLock(id, true), 30000); }
   const m = openModal({ title: 'Teamtaak', wide: !!t.mail, body,
@@ -386,6 +432,7 @@ function openTeamTask(id) {
         const changes = {};
         for (const k of Object.keys(draft)) if (JSON.stringify(draft[k] ?? null) !== JSON.stringify(t[k] ?? null)) changes[k] = draft[k];
         if (!Object.keys(changes).length) return m.close();
+        if ('assignees' in changes) changes.assignee = draft.assignees[0] || null;
         // fail-safe: heeft iemand dit intussen gewijzigd?
         const clash = Object.keys(changes).filter(k => now._f[k] && now._f[k].t > (bases[k] || 0) && now._f[k].by !== meId());
         if (clash.length) {
@@ -395,7 +442,8 @@ function openTeamTask(id) {
           for (const k of clash) bases[k] = now._f[k].t;
         }
         teamSet(id, changes, bases); m.close();
-        if ('assignee' in changes && changes.assignee && changes.assignee !== meId()) toast('Toegewezen aan ' + memberName(changes.assignee));
+        const added = (changes.assignees || []).filter(x => x !== meId() && !t.assignees.includes(x));
+        if (added.length) toast('Toegewezen aan ' + added.map(memberName).join(', '));
       } }, 'Opslaan')],
     onClose: () => { clearInterval(lockTimer); if (!ro) setLock(id, false); } });
 }
@@ -430,21 +478,91 @@ async function shareChoice(n) {
       onClose: () => { if (!done) res(null); } });
   });
 }
+async function storeTeamFile(a, extra = {}) {
+  const id = uid() + uid();
+  await tWrite('bijlagen/' + id + '.bin', await TC.enc(Team.key, a.data));
+  return { id, name: a.name, type: a.type || MailParser.guessType(a.name), size: a.data.length, kid: Team.kid, ...extra };
+}
 async function storeMail(mail) {
-  const atts = [];
-  for (const a of mail.attachments || []) {
-    const id = uid() + uid();
-    await tWrite('bijlagen/' + id + '.bin', await TC.enc(Team.key, a.data));
-    atts.push({ id, name: a.name, type: a.type || '', size: a.data.length, kid: Team.kid });
+  const attachments = [], inline = [];
+  for (const a of mail.attachments || []) attachments.push(await storeTeamFile(a));
+  let html = (mail.html || '').replace(/<!--(?!\[if)[\s\S]*?-->/g, '');
+  if (html.length > 600000) html = ''; // extreem grote opmaak: dan alleen de tekst bewaren
+  if (html) for (const i of mail.inline || []) inline.push(await storeTeamFile(i, { cid: i.cid }));
+  return { from: mail.from || '', date: mail.date || '', body: (mail.body || '').slice(0, 100000), html, inline, attachments };
+}
+
+/* ---------- gedeelde modules (takenlijsten en notities) ---------- */
+const MODULE_TYPES = { teamtasks: ['Takenlijst', 'checksquare'], teamnotes: ['Teamnotities', 'note'] };
+function moduleCount(m) { return m.type === 'teamnotes' ? Team.notes.filter(n => n.module === m.id).length : Team.tasks.filter(t => t.module === m.id).length; }
+function placedModules() {
+  const ids = new Set();
+  for (const it of allItems()) if (MODULE_TYPES[it.type]) ids.add(it.config.moduleId || (it.type === 'teamtasks' ? 'main' : ''));
+  return ids;
+}
+function unplacedModules() { const placed = placedModules(); return Team.status === 'ok' ? Team.modules.filter(m => !placed.has(m.id) && moduleCount(m) > 0) : []; }
+async function newModule(type, cfg) {
+  if (Team.status !== 'ok') { toast('Sluit je eerst aan bij een team (Instellingen → Team)'); return null; }
+  const title = await ask('Nieuwe gedeelde module', 'Naam (zichtbaar voor het hele team)', MODULE_TYPES[type][0]);
+  if (!title) return null;
+  const id = uid();
+  teamSet(id, { kind: 'module', type, title, createdBy: meId(), created: Date.now() });
+  return { ...cfg, moduleId: id, title };
+}
+function placeModule(m) {
+  if (!currentPage().team) { const tp = S.pages.find(p => p.team); if (tp && S.activePage !== tp.id) goPage(tp.id); }
+  addItem(m.type, { moduleId: m.id, title: m.title });
+  S.team.prompted = [...new Set([...(S.team.prompted || []), m.id])]; save();
+  toast('“' + m.title + '” staat nu op je tabblad');
+}
+let promptBox = null;
+function checkModulePrompt() {
+  if (!S?.team || Team.status !== 'ok' || !currentPage().team) { promptBox?.remove(); promptBox = null; return; }
+  const skip = new Set([...(S.team.dismissed || []), ...(S.team.prompted || [])]);
+  const m = unplacedModules().find(x => !skip.has(x.id) && x.createdBy !== meId() && !x.virtual);
+  if (!m) { promptBox?.remove(); promptBox = null; return; }
+  if (promptBox?.dataset.id === m.id) return;
+  promptBox?.remove();
+  const n = moduleCount(m), [label, ic] = MODULE_TYPES[m.type];
+  promptBox = h('div', { class: 'modprompt', 'data-id': m.id, role: 'dialog' },
+    avatarEl(m.createdBy, 40),
+    h('div', { class: 'grow' }, h('b', {}, memberName(m.createdBy) + ' heeft inhoud toegevoegd'),
+      h('div', {}, h('span', { html: icon(ic, 14), style: { display: 'inline-block', verticalAlign: '-2px', marginRight: '5px' } }), `${label}: “${m.title}” · ${n} ${m.type === 'teamnotes' ? (n === 1 ? 'notitie' : 'notities') : (n === 1 ? 'taak' : 'taken')}`),
+      h('div', { class: 'hint', style: { margin: '2px 0 0' } }, 'Wil je deze module ook op je team-tabblad zetten?')),
+    h('div', { class: 'row' },
+      h('button', { class: 'btn sm', onclick: () => { S.team.dismissed = [...new Set([...(S.team.dismissed || []), m.id])]; save(); promptBox.remove(); promptBox = null; toast('Je vindt hem later terug bovenaan het widgetpaneel (tandwiel)', 4500); checkModulePrompt(); } }, 'Nee'),
+      h('button', { class: 'btn primary sm', onclick: () => { promptBox.remove(); promptBox = null; placeModule(m); checkModulePrompt(); } }, 'Toevoegen')));
+  document.body.append(promptBox);
+}
+/* bovenaan het widgetpaneel: "[naam] heeft inhoud toegevoegd" */
+function teamRepoGroups(q) {
+  const out = [];
+  const byCreator = new Map();
+  for (const m of unplacedModules()) {
+    const [label] = MODULE_TYPES[m.type];
+    if (q && !(m.title + ' ' + label + ' ' + memberName(m.createdBy)).toLowerCase().includes(q)) continue;
+    (byCreator.get(m.createdBy) || byCreator.set(m.createdBy, []).get(m.createdBy)).push(m);
   }
-  return { from: mail.from || '', date: mail.date || '', body: (mail.body || '').slice(0, 100000), attachments: atts };
+  for (const [creator, mods] of byCreator) {
+    const grp = h('div', { class: 'repo-group team-shared' }, h('h4', {}, creator === meId() ? 'Jij hebt inhoud toegevoegd' : memberName(creator) + ' heeft inhoud toegevoegd'));
+    for (const m of mods) {
+      const [label, ic] = MODULE_TYPES[m.type], n = moduleCount(m);
+      grp.append(h('button', { class: 'repo-item', onclick: () => { placeModule(m); renderRepo(); } },
+        h('span', { class: 'ri', html: icon(ic, 20) }),
+        h('span', {}, h('b', {}, m.title), h('small', {}, `${label} · ${n} ${m.type === 'teamnotes' ? (n === 1 ? 'notitie' : 'notities') : (n === 1 ? 'taak' : 'taken')} · gedeeld`)),
+        avatarEl(creator, 26)));
+    }
+    out.push(grp);
+  }
+  return out;
 }
 
 /* ---------- widgets ---------- */
 reg({
   type: 'teamtasks', name: 'Teamtaken', desc: 'Gedeelde takenlijst: toewijzen aan collega’s, e-mails erin slepen', icon: 'users', group: 'widgets',
   size: { w: 9, h: 11 }, min: { w: 4, h: 5 },
-  defaults: { title: 'Teamtaken', filter: 'all', showDone: true, defaultPrio: 'medium' },
+  defaults: { title: 'Teamtaken', filter: 'all', showDone: true, defaultPrio: 'medium', moduleId: '' },
+  beforeAdd: cfg => cfg.moduleId ? cfg : newModule('teamtasks', cfg),
   fields: [
     { key: 'title', label: 'Kop', type: 'text' },
     { key: 'filter', label: 'Standaard tonen', type: 'seg', options: [['all', 'Alles'], ['mine', 'Aan mij'], ['open', 'Niet toegewezen']] },
@@ -453,42 +571,45 @@ reg({
   ],
   render(el, ctx) {
     if (Team.status !== 'ok') return teamStatusBox(el);
-    const c = ctx.config, d = ctx.item.data;
+    const c = ctx.config, d = ctx.item.data, mod = c.moduleId || 'main';
+    if (!moduleOf(mod)) return moduleGone(el, mod);
     d.filter = d.filter || c.filter || 'all';
-    let prio = c.defaultPrio || 'medium', assignee = null;
+    let prio = c.defaultPrio || 'medium', assignees = [];
     const inp = h('input', { class: 'inp grow', placeholder: 'Nieuwe teamtaak… (of sleep een e-mail hierheen)' });
     const pr = h('div', { class: 'prio', title: 'Prioriteit' });
     const drawPr = () => { pr.innerHTML = ''; for (const p of ['hoog', 'medium', 'laag']) pr.append(h('button', { class: prio === p ? 'on' : '', title: PRIO_LABEL[p], onclick: () => { prio = p; drawPr(); } }, h('i', { class: 'pc-' + p }))); };
     drawPr();
-    const asg = h('button', { class: 'iconbtn', title: 'Toewijzen aan…' });
-    const drawAsg = () => { asg.innerHTML = ''; asg.append(assignee ? avatarEl(assignee, 26) : h('span', { html: icon('user', 16) })); asg.title = assignee ? 'Toewijzen aan ' + memberName(assignee) : 'Toewijzen aan…'; };
-    asg.onclick = () => assigneePicker(asg, assignee, v => { assignee = v; drawAsg(); });
+    const asg = h('button', { class: 'iconbtn asg', title: 'Toewijzen aan…' });
+    const drawAsg = () => { asg.innerHTML = ''; asg.append(assignees.length ? avatarStack(assignees, 24, 2) : h('span', { html: icon('user', 16) })); asg.title = assignees.length ? 'Toewijzen aan ' + assignees.map(memberName).join(', ') : 'Toewijzen aan…'; };
+    asg.onclick = () => assigneesPicker(asg, assignees, v => { assignees = v; drawAsg(); });
     drawAsg();
-    const add = () => { const v = inp.value.trim(); if (!v) return; teamAddTask({ title: v, prio, assignee }); inp.value = ''; inp.focus(); };
+    const add = () => { const v = inp.value.trim(); if (!v) return; teamAddTask({ title: v, prio, assignees, module: mod }); inp.value = ''; inp.focus(); };
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
     const tabs = h('div', { class: 'seg', style: { marginBottom: '8px' } });
     for (const [k, l] of [['all', 'Alles'], ['mine', 'Aan mij'], ['open', 'Niet toegewezen']]) tabs.append(h('button', { class: d.filter === k ? 'on' : '', onclick: () => { d.filter = k; ctx.save(); ctx.rerender(); } }, l));
     const list = h('div', { class: 'todo-list' });
-    const items = Team.tasks.filter(t => (c.showDone !== false || !t.done) && (d.filter === 'all' || (d.filter === 'mine' ? t.assignee === meId() : !t.assignee)))
+    const mine = Team.tasks.filter(t => t.module === mod);
+    const items = mine.filter(t => (c.showDone !== false || !t.done) && (d.filter === 'all' || (d.filter === 'mine' ? t.assignees.includes(meId()) : !t.assignees.length)))
       .sort((a, b) => (!!a.done - !!b.done) || (PRIO[a.prio] - PRIO[b.prio]) || (a.created - b.created));
     for (const t of items) {
       const lock = Team.locks.get(t.id);
-      const av = h('button', { class: 'mini av-btn', title: t.assignee ? 'Toegewezen aan ' + memberName(t.assignee) : 'Toewijzen' });
-      av.append(t.assignee ? avatarEl(t.assignee, 24) : h('span', { html: icon('user', 15) }));
-      av.onclick = e => { e.stopPropagation(); if (lock) return toast(memberName(lock.by) + ' is deze taak aan het bewerken'); assigneePicker(av, t.assignee, v => teamSet(t.id, { assignee: v })); };
+      const av = h('button', { class: 'mini av-btn', title: t.assignees.length ? 'Toegewezen aan ' + t.assignees.map(memberName).join(', ') : 'Toewijzen' });
+      av.append(t.assignees.length ? avatarStack(t.assignees, 24, 3) : h('span', { html: icon('user', 15) }));
+      av.onclick = e => { e.stopPropagation(); if (lock) return toast(memberName(lock.by) + ' is deze taak aan het bewerken'); assigneesPicker(av, t.assignees, v => setAssignees(t.id, v)); };
+      const nAtt = (t.mail?.attachments || []).length;
       list.append(h('div', { class: 'todo' + (t.done ? ' done' : '') },
         h('span', { class: 'bar pc-' + (t.prio || 'medium') }),
         h('button', { class: 'cb', title: t.done ? 'Niet klaar' : 'Klaar', html: icon('check', 13), onclick: () => { if (lock) return toast(memberName(lock.by) + ' is deze taak aan het bewerken'); teamSet(t.id, { done: !t.done }); } }),
         h('div', { class: 'tt clickable', title: 'Openen', onclick: () => openTeamTask(t.id) }, t.title),
-        t.mail ? h('span', { class: 'meta', title: 'Met e-mail' + ((t.mail.attachments || []).length ? ' en bijlagen' : ''), html: icon((t.mail.attachments || []).length ? 'file' : 'mail', 14) }) : '',
-        t.conflicts.length ? h('span', { class: 'meta warn', title: 'Tegelijk gewijzigd — open de taak', html: icon('alert', 14) }) : '',
+        t.mail ? h('span', { class: 'meta', title: 'Met e-mail' + (nAtt ? ` en ${nAtt} bijlage${nAtt === 1 ? '' : 'n'}` : '') }, h('span', { html: icon(nAtt ? 'file' : 'mail', 14), style: { display: 'inline-block', verticalAlign: '-2px' } }), nAtt > 1 ? ' ' + nAtt : '') : '',
+        t.conflicts.filter(x => x.field !== 'assignee').length ? h('span', { class: 'meta warn', title: 'Tegelijk gewijzigd — open de taak', html: icon('alert', 14) }) : '',
         lock ? h('span', { class: 'lockb', title: memberName(lock.by) + ' bewerkt deze taak' }, h('span', { html: icon('lock', 12) }), memberName(lock.by)) : '',
         av));
     }
     if (!items.length) list.append(h('div', { class: 'empty' }, d.filter === 'mine' ? 'Er staan geen taken op jouw naam.' : 'Nog geen teamtaken. Typ hierboven of sleep een e-mail hierheen.'));
-    const open = Team.tasks.filter(t => !t.done).length;
+    const open = mine.filter(t => !t.done).length;
     el.append(h('div', { class: 'todo-add' }, inp, pr, asg, h('button', { class: 'iconbtn', title: 'Toevoegen', html: icon('plus', 16), onclick: add })), tabs, list,
-      h('div', { class: 'todo-foot' }, h('span', {}, `${open} open`), h('span', { class: 'sync', title: 'Wijzigingen worden direct in de teammap opgeslagen' }, h('span', { html: icon('refresh', 12) }), 'live')));
+      h('div', { class: 'todo-foot' }, h('span', {}, `${open} open`), h('span', { class: 'sync', title: 'Gedeeld met het team; wijzigingen worden direct opgeslagen' }, h('span', { html: icon('users', 12) }), 'gedeeld · live')));
     const card = el.closest('.card') || el;
     card.addEventListener('dragover', e => { if (editing) return; e.preventDefault(); e.stopPropagation(); card.classList.add('dropping'); });
     card.addEventListener('dragleave', e => { if (!card.contains(e.relatedTarget)) card.classList.remove('dropping'); });
@@ -502,10 +623,65 @@ reg({
       for (const g of got) {
         let mail = null;
         if (share && g.mail) { try { mail = await storeMail(g.mail); } catch (err) { toast('Bijlagen opslaan mislukt: ' + err.message, 5000); } }
-        teamAddTask({ title: g.title, prio, assignee, mail });
+        teamAddTask({ title: g.title, prio, assignees, mail, module: mod });
       }
       toast(got.length === 1 ? 'Teamtaak toegevoegd: ' + got[0].title : got.length + ' teamtaken toegevoegd');
     });
+  },
+});
+
+/* ---------- gedeelde notities ---------- */
+const noteSaveTimers = new Map();
+let focusNoteId = null;
+reg({
+  type: 'teamnotes', name: 'Teamnotities', desc: 'Notities die het hele team ziet en kan bewerken', icon: 'note', group: 'widgets',
+  size: { w: 7, h: 9 }, min: { w: 3, h: 3 },
+  defaults: { title: 'Teamnotities', newOnTop: true, moduleId: '' },
+  beforeAdd: cfg => cfg.moduleId ? cfg : newModule('teamnotes', cfg),
+  fields: [{ key: 'title', label: 'Kop', type: 'text' }, { key: 'newOnTop', label: 'Nieuwe notities bovenaan', type: 'checkbox' }],
+  render(el, ctx) {
+    if (Team.status !== 'ok') return teamStatusBox(el);
+    const c = ctx.config, mod = c.moduleId, d = ctx.item.data; d.rem = d.rem || {};
+    if (!mod || !moduleOf(mod)) return moduleGone(el, mod);
+    const notes = Team.notes.filter(n => n.module === mod).sort((a, b) => c.newOnTop !== false ? b.created - a.created : a.created - b.created);
+    const wrap = h('div', { class: 'notes' });
+    for (const n of notes) {
+      const lock = Team.locks.get(n.id);
+      const ro = !!lock && lock.until > Date.now();
+      const ed = h('div', { class: 'ne', contenteditable: ro ? 'false' : 'true', 'data-ph': 'Schrijf een notitie voor het team…', html: sanitize(n.html || '') });
+      let lockTimer = null;
+      const flushNote = () => { clearTimeout(noteSaveTimers.get(n.id)); noteSaveTimers.delete(n.id); const v = sanitize(ed.innerHTML); if (v !== (Team.records.get(n.id)?.html || '')) teamSet(n.id, { html: v, editedBy: meId(), edited: Date.now() }); };
+      ed.addEventListener('focus', () => { setLock(n.id, true); lockTimer = setInterval(() => setLock(n.id, true), 30000); });
+      ed.addEventListener('blur', () => { clearInterval(lockTimer); flushNote(); setLock(n.id, false); });
+      ed.addEventListener('input', () => { clearTimeout(noteSaveTimers.get(n.id)); noteSaveTimers.set(n.id, setTimeout(flushNote, 700)); });
+      ed.addEventListener('paste', e => { e.preventDefault(); const html = e.clipboardData.getData('text/html'); if (html) document.execCommand('insertHTML', false, sanitize(html)); else document.execCommand('insertText', false, e.clipboardData.getData('text/plain')); });
+      ed.addEventListener('click', e => {
+        const a = e.target.closest('a'); if (a && (e.ctrlKey || e.metaKey)) { e.preventDefault(); openUrl(a.href); return; }
+        const li = e.target.closest('ul.chk > li'); if (li && e.offsetX < 22 && !ro) { li.classList.toggle('ok'); ed.dispatchEvent(new Event('input')); }
+      });
+      const tb = h('div', { class: 'nt' }, NOTE_TOOLS.map(([ic, t, fn]) => h('button', { title: t, html: icon(ic, 15), onmousedown: e => e.preventDefault(), onclick: async () => { ed.focus(); await fn(); ed.dispatchEvent(new Event('input')); } })));
+      const r = d.rem[n.id];
+      const bell = h('button', { class: 'mini' + (r?.remindAt && !r.reminded ? ' on' : ''), title: 'Persoonlijke herinnering (alleen voor jou)', html: icon('bell', 15) });
+      bell.onclick = () => ctx.remind(bell, r?.remindAt, ts => { if (ts) d.rem[n.id] = { id: n.id, remindAt: ts, reminded: false }; else delete d.rem[n.id]; ctx.save(); ctx.rerender(); });
+      const who = n.editedBy && n.editedBy !== n.createdBy ? `${memberName(n.createdBy)} · bewerkt door ${memberName(n.editedBy)}` : memberName(n.createdBy);
+      wrap.append(h('div', { class: 'note team' + (r?.remindAt && !r.reminded ? ' due' : '') + (ro ? ' locked' : '') }, ro ? '' : tb, ed,
+        h('div', { class: 'nf' },
+          avatarEl(n.editedBy || n.createdBy, 18),
+          h('span', { class: 'when' }, `${who} · ${timeAgo(n.edited || n.created)}`),
+          ro ? h('span', { class: 'lockb' }, h('span', { html: icon('lock', 12) }), memberName(lock.by) + ' typt…') : '',
+          n.conflicts.length ? h('span', { class: 'meta warn', title: 'Tegelijk bewerkt door ' + [...new Set(n.conflicts.map(x => memberName(x.by)))].join(', ') + '. De nieuwste versie is bewaard.', html: icon('alert', 14) }) : '',
+          r?.remindAt && !r.reminded ? h('span', { class: 'rem', html: icon('bell', 12) + fmtWhen(r.remindAt) }) : '',
+          bell,
+          ro ? '' : h('button', { class: 'mini', title: 'Notitie voor iedereen verwijderen', html: icon('trash', 15), onclick: async () => {
+            if (!(await confirmDlg('Notitie verwijderen?', 'De notitie verdwijnt voor het hele team.', 'Verwijderen', true))) return;
+            teamSet(n.id, { deleted: true }); delete d.rem[n.id]; ctx.save();
+          } }))));
+      if (focusNoteId === n.id) { focusNoteId = null; setTimeout(() => ed.focus(), 30); }
+    }
+    if (!notes.length) wrap.append(h('div', { class: 'empty' }, 'Nog geen teamnotities. Wat je hier schrijft, ziet het hele team.'));
+    el.append(wrap, h('div', { class: 'row', style: { paddingTop: '8px', justifyContent: 'space-between' } },
+      h('button', { class: 'btn sm', onclick: () => { const id = uid(); focusNoteId = id; teamSet(id, { kind: 'note', module: mod, html: '', createdBy: meId(), created: Date.now() }); } }, h('span', { html: icon('plus', 14) }), 'Notitie'),
+      h('span', { class: 'todo-foot', style: { padding: 0 } }, h('span', { class: 'sync' }, h('span', { html: icon('users', 12) }), 'gedeeld · live'))));
   },
 });
 reg({
@@ -517,7 +693,7 @@ reg({
     if (Team.status !== 'ok') return teamStatusBox(el);
     const wrap = h('div', { class: 'members' });
     for (const m of membersList()) {
-      const open = Team.tasks.filter(t => t.assignee === m.id && !t.done).length;
+      const open = Team.tasks.filter(t => t.assignees.includes(m.id) && !t.done).length;
       const ago = m.id === meId() ? 'jij' : m.updated ? 'actief ' + timeAgo(m.updated) : '';
       wrap.append(h('button', { class: 'member', title: m.id === meId() ? 'Je profiel aanpassen' : m.name, onclick: () => { if (m.id === meId()) profileDialog(); } },
         avatarEl(m.id, 38), h('span', { class: 'grow' }, h('b', {}, m.name), h('small', {}, [ago, open ? `${open} open` : ''].filter(Boolean).join(' · ')))));
@@ -532,7 +708,7 @@ function timeAgo(ts) {
 
 /* ---------- persoonlijke takenlijst: teamtaken erbij ---------- */
 const TeamForTodo = {
-  mine: () => (Team.status === 'ok' ? Team.tasks.filter(t => t.assignee === meId()) : []),
+  mine: () => (Team.status === 'ok' ? Team.tasks.filter(t => t.assignees.includes(meId())) : []),
   open: id => openTeamTask(id),
   toggle: t => teamSet(t.id, { done: !t.done }),
 };
@@ -579,7 +755,7 @@ function teamPage(add) {
   if (!p && add) {
     p = { id: uid(), name: 'Team', icon: 'users', team: true, items: [
       mk('title', 0, 3, 10, 1, { text: S.team.name, size: 3 }),
-      mk('teamtasks', 0, 4, 10, 11), mk('teammembers', 10, 4, 5, 6) ] };
+      mk('teamtasks', 0, 4, 10, 11, { moduleId: 'main' }), mk('teammembers', 10, 4, 5, 6) ] };
     const i = S.pages.findIndex(x => x.id === S.activePage);
     S.pages.splice(i + 1, 0, p);
   }
@@ -734,6 +910,20 @@ function tabTeam(b) {
   if (Team.status === 'ok') {
     b.append(sect('Jouw profiel', h('button', { class: 'member', onclick: profileDialog }, avatarEl(meId(), 38), h('span', { class: 'grow' }, h('b', {}, memberName(meId())), h('small', {}, 'Naam en foto aanpassen')), h('span', { html: icon('pencil', 15) }))));
     b.append(sect('Leden', h('div', { class: 'members' }, membersList().map(m => h('div', { class: 'member' }, avatarEl(m.id, 30), h('span', { class: 'grow' }, h('b', {}, m.name + (m.id === meId() ? ' (jij)' : '')), h('small', {}, m.id === Team.meta?.creator ? 'maker van het team' : '')))))));
+  }
+  if (Team.status === 'ok') {
+    const placed = placedModules();
+    const canDelete = m => !m.virtual && (m.createdBy === meId() || Team.meta?.creator === meId());
+    b.append(sect('Gedeelde modules',
+      h('p', { class: 'hint' }, 'Takenlijsten en notities die met het hele team gedeeld zijn. Een nieuwe maak je door in het widgetpaneel “Teamtaken” of “Teamnotities” toe te voegen.'),
+      Team.modules.map(m => { const [label, ic] = MODULE_TYPES[m.type] || ['Module', 'grid']; const n = moduleCount(m);
+        return h('div', { class: 'list-row' }, h('span', { html: icon(ic, 16) }),
+          h('div', { class: 'grow' }, h('b', {}, m.title), h('div', { class: 'hint', style: { margin: 0 } }, `${label} · ${n} ${m.type === 'teamnotes' ? 'notities' : 'taken'} · door ${memberName(m.createdBy)}`)),
+          placed.has(m.id) ? h('span', { class: 'badge' }, 'op je tabblad') : h('button', { class: 'btn sm', onclick: () => { placeModule(m); renderSettings(); } }, 'Toevoegen'),
+          canDelete(m) ? ib('trash', 'Voor iedereen verwijderen', async () => {
+            if (!(await confirmDlg('Module voor iedereen verwijderen?', `“${m.title}” en alles erin verdwijnt bij het hele team.`, 'Verwijderen', true))) return;
+            teamSet(m.id, { deleted: true }); renderSettings();
+          }, 'mini') : null); })));
   }
   b.append(sect('E-mails in teamtaken',
     h('div', { class: 'field' }, h('label', {}, 'Inhoud en bijlagen van gesleepte e-mails delen'), segCtl([['ask', 'Elke keer vragen'], ['on', 'Standaard aan'], ['off', 'Standaard uit']], S.team.shareMail || 'ask', v => { S.team.shareMail = v; save(); }))));

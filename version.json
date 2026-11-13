@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "groot": true,
-  "notes": "Nieuw: samenwerken in een team. Maak een versleutelde teammap (bijv. op OneDrive) of sluit je aan bij een team. Team-tabblad met gedeelde taken, toewijzen met foto, e-mails met inhoud en bijlagen delen, meldingen bij nieuwe taken. Je eigen takenlijst toont teamtaken bovenaan en je kunt de volgorde zelf slepen.",
+  "notes": "Mails tonen nu met hun afbeeldingen in de tekst; alleen echte bijlagen zijn bijlagen. Bijlagen bekijken in een pop-up (ook Word, Excel, PowerPoint, PDF) en alles in één keer downloaden. Meerdere personen per taak. Gedeelde teamnotities. Uitnodiging als een collega een gedeelde module toevoegt. Nieuwe widget: Afbeelding.",
   "file": "streamline.html"
 }

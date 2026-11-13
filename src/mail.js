@@ -89,20 +89,105 @@ const MailParser = (() => {
     }
     return null;
   }
+
+  /* ---------- Outlook RTF (gecomprimeerd) → HTML ---------- */
+  const RTF_PRE = '{\\rtf1\\ansi\\mac\\deff0\\deftab720{\\fonttbl;}{\\f0\\fnil \\froman \\fswiss \\fmodern \\fscript \\fdecor MS Sans SerifSymbolArialTimes New RomanCourier{\\colortbl\\red0\\green0\\blue0\r\n\\par \\pard\\plain\\f0\\fs20\\b\\i\\u\\tab\\tx';
+  function decompressRTF(src) {
+    const dv = new DataView(src.buffer, src.byteOffset, src.byteLength);
+    const comp = dv.getUint32(0, true), raw = dv.getUint32(4, true), type = dv.getUint32(8, true);
+    if (type === 0x414C454D) return src.subarray(16, 16 + raw); // 'MELA' = niet gecomprimeerd
+    if (type !== 0x75465A4C) throw new Error('onbekend RTF-formaat');
+    const dict = new Uint8Array(4096); for (let i = 0; i < RTF_PRE.length; i++) dict[i] = RTF_PRE.charCodeAt(i);
+    let wp = RTF_PRE.length; const out = []; let p = 16; const end = Math.min(src.length, comp + 4);
+    outer: while (p < end) {
+      const ctrl = src[p++];
+      for (let bit = 0; bit < 8 && p < end; bit++) {
+        if (ctrl & (1 << bit)) {
+          const v = (src[p] << 8) | src[p + 1]; p += 2;
+          const off = v >> 4, len = (v & 15) + 2;
+          if (off === wp) break outer;
+          for (let i = 0; i < len; i++) { const b = dict[(off + i) & 4095]; out.push(b); dict[wp] = b; wp = (wp + 1) & 4095; }
+        } else { const b = src[p++]; out.push(b); dict[wp] = b; wp = (wp + 1) & 4095; }
+      }
+    }
+    return Uint8Array.from(out);
+  }
+  const SKIP_DEST = new Set(['fonttbl', 'colortbl', 'stylesheet', 'info', 'pict', 'header', 'footer', 'listtable', 'listoverridetable', 'rsidtbl', 'generator', 'xmlnstbl', 'themedata', 'colorschememapping', 'latentstyles', 'datastore', 'mmathPr', 'pgdsctbl', 'filetbl', 'revtbl', 'object', 'objdata', 'bkmkstart', 'bkmkend', 'fldinst']);
+  const CHARSET_CP = { 0: 0, 77: 10000, 128: 932, 129: 949, 130: 1361, 134: 936, 136: 950, 161: 1253, 162: 1254, 163: 1258, 177: 1255, 178: 1256, 186: 1257, 204: 1251, 222: 874, 238: 1250 };
+  const CP_LABEL = { 932: 'shift_jis', 949: 'euc-kr', 936: 'gbk', 950: 'big5', 10000: 'macintosh', 1361: 'euc-kr' };
+  // Haalt de oorspronkelijke HTML uit Outlooks RTF ("de-encapsulation", MS-OXRTFEX)
+  function htmlFromRTF(bytes) {
+    const s = latin1(bytes);
+    if (!/\\fromhtml1/.test(s.slice(0, 2000))) return '';
+    let cp = 1252; const m = /\\ansicpg(\d+)/.exec(s.slice(0, 2000)); if (m) cp = +m[1];
+    const decoders = {};
+    const decFor = c => decoders[c] ||= (() => { try { return new TextDecoder(CP_LABEL[c] || 'windows-' + c); } catch (e) { return new TextDecoder('windows-1252'); } })();
+    // lettertypen met hun tekenset (bepaalt hoe \'xx-tekens gelezen worden, bijv. Japans)
+    const fontCp = {};
+    const ft = /\{\\fonttbl([\s\S]*?)\}\s*\}/.exec(s.slice(0, 200000));
+    if (ft) for (const fm of ft[1].matchAll(/\\f(\d+)[^;]*?\\fcharset(\d+)/g)) { const c = CHARSET_CP[+fm[2]]; if (c) fontCp[fm[1]] = c; }
+    const pieces = []; let bytesBuf = [], bufCp = cp;
+    const flush = () => { if (bytesBuf.length) { pieces.push(decFor(bufCp).decode(Uint8Array.from(bytesBuf))); bytesBuf = []; } };
+    let st = { skip: false, tag: false, rtfOnly: false, uc: 1, cp }; const stack = [];
+    let skipChars = 0, first = false;
+    const out = () => !st.skip && (st.tag || !st.rtfOnly);
+    const emitByte = b => { if (skipChars > 0) { skipChars--; return; } if (out()) { if (st.cp !== bufCp) { flush(); bufCp = st.cp; } bytesBuf.push(b); } };
+    const emitStr = t => { if (out()) { flush(); pieces.push(t); } };
+    for (let i = 0; i < s.length;) {
+      const c = s[i];
+      if (c === '{') { stack.push(st); st = { ...st }; first = true; i++; continue; }
+      if (c === '}') { st = stack.pop() || st; first = false; i++; continue; }
+      if (c === '\\') {
+        const n = s[i + 1];
+        if (n === '\\' || n === '{' || n === '}') { emitByte(n.charCodeAt(0)); i += 2; first = false; continue; }
+        if (n === "'") { emitByte(parseInt(s.substr(i + 2, 2), 16)); i += 4; first = false; continue; }
+        if (n === '*') { i += 2; const mm = /^\\([a-zA-Z]+)(-?\d+)?/.exec(s.slice(i, i + 40)); if (mm) { if (mm[1] === 'htmltag') st.tag = true; else st.skip = true; } else st.skip = true; continue; }
+        if (n === '~') { emitStr(' '); i += 2; continue; }
+        if (n === '_') { emitStr('-'); i += 2; continue; }
+        if (n === '\r' || n === '\n') { emitStr('\r\n'); i += 2; continue; }
+        const mm = /^\\([a-zA-Z]+)(-?\d+)? ?/.exec(s.slice(i, i + 40));
+        if (!mm) { i += 2; continue; }
+        i += mm[0].length;
+        const w = mm[1], arg = mm[2] !== undefined ? +mm[2] : null;
+        if (first && SKIP_DEST.has(w)) st.skip = true;
+        first = false;
+        if (w === 'htmltag') { st.tag = true; continue; }
+        if (w === 'htmlrtf') { st.rtfOnly = arg !== 0; continue; }
+        if (w === 'f' && arg !== null) { st.cp = fontCp[arg] || cp; continue; }
+        if (w === 'par' || w === 'line') { emitStr('\r\n'); continue; }
+        if (w === 'tab') { emitStr('\t'); continue; }
+        if (w === 'uc') { st.uc = arg ?? 1; continue; }
+        if (w === 'u') { let code = arg; if (code < 0) code += 65536; emitStr(String.fromCharCode(code)); skipChars = st.uc; continue; }
+        if (w === 'lquote') emitStr('‘'); else if (w === 'rquote') emitStr('’'); else if (w === 'ldblquote') emitStr('“'); else if (w === 'rdblquote') emitStr('”'); else if (w === 'bullet') emitStr('•'); else if (w === 'endash') emitStr('–'); else if (w === 'emdash') emitStr('—');
+        continue;
+      }
+      first = false;
+      if (c === '\r' || c === '\n') { i++; continue; }
+      emitByte(c.charCodeAt(0)); i++;
+    }
+    flush();
+    return pieces.join('');
+  }
+
   function parseMsg(buf) {
     const cfb = readCFB(buf);
     const { props, streams } = msgProps(cfb, 0);
     const date = filetimeFromProps(cfb, streams['__properties_version1.0'], 32, [0x0039, 0x0E06]);
     let body = typeof props['1000'] === 'string' ? props['1000'] : '';
-    if (!body && props['1013']) body = htmlToText(typeof props['1013'] === 'string' ? props['1013'] : new TextDecoder().decode(props['1013']));
-    const attachments = [];
+    let html = '';
+    if (props['1013']) html = typeof props['1013'] === 'string' ? props['1013'] : decodeCharset(props['1013'], (/charset=["']?([\w-]+)/i.exec(latin1(props['1013'].subarray(0, 2000))) || [])[1] || 'utf-8');
+    if (!html && props['1009'] instanceof Uint8Array) { try { html = htmlFromRTF(decompressRTF(props['1009'])); } catch (e) {} }
+    if (!body && html) body = htmlToText(html);
+    const attachments = [], inline = [];
     for (const e of cfb.children(0)) {
       if (e.type !== 1 || !/^__attach_version1\.0_/i.test(e.name)) continue;
       const a = msgProps(cfb, e.idx).props;
       const data = a['3701'];
       if (!(data instanceof Uint8Array)) continue; // ingesloten mail of OLE-object: overslaan
-      const name = a['3707'] || a['3704'] || a['3001'] || 'bijlage';
-      attachments.push({ name: String(name), type: String(a['370E'] || ''), data });
+      const name = String(a['3707'] || a['3704'] || a['3001'] || 'bijlage');
+      const cid = String(a['3712'] || '').replace(/^<|>$/g, '');
+      const item = { name, type: String(a['370E'] || guessType(name)), data, cid };
+      if (cid && html && html.includes('cid:' + cid)) inline.push(item); else attachments.push(item);
     }
     const fromName = props['0C1A'] || props['0042'] || '', fromMail = props['5D01'] || props['0C1F'] || props['0065'] || '';
     const th = typeof props['007D'] === 'string' ? headers(props['007D']) : {};
@@ -111,9 +196,12 @@ const MailParser = (() => {
       from: th['from'] ? decodeWords(th['from']) : [fromName, fromMail && fromMail !== fromName && /@/.test(fromMail) ? `<${fromMail}>` : ''].filter(Boolean).join(' '),
       date: date ? date.toISOString() : '',
       body: String(body || '').replace(/\r\n/g, '\n').trim(),
-      attachments,
+      html, attachments, inline,
     };
   }
+  const EXT_TYPES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml', pdf: 'application/pdf', txt: 'text/plain', csv: 'text/csv', json: 'application/json', html: 'text/html', htm: 'text/html', mp3: 'audio/mpeg', wav: 'audio/wav', m4a: 'audio/mp4', mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', msg: 'application/vnd.ms-outlook', eml: 'message/rfc822', zip: 'application/zip' };
+  function guessType(name) { return EXT_TYPES[String(name).split('.').pop().toLowerCase()] || 'application/octet-stream'; }
 
   /* ---------- .eml (MIME) ---------- */
   const latin1 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return s; };
@@ -159,18 +247,23 @@ const MailParser = (() => {
     if (type === 'message/rfc822' && !/attachment/i.test(disp)) { walk(body, out); return hd; }
     const name = param(disp, 'filename') || param(ct, 'name');
     const data = decodeBody(body, hd['content-transfer-encoding']);
+    const cid = (hd['content-id'] || '').trim().replace(/^<|>$/g, '');
     if (name || /attachment/i.test(disp) || !type.startsWith('text/')) {
-      if (!/inline/i.test(disp) || name) out.attachments.push({ name: name || 'bijlage', type, data });
+      out.parts.push({ name: name || (cid ? cid.split('@')[0] : 'bijlage'), type, data, cid, loc: hd['content-location'] || '' });
     } else if (type === 'text/plain' && !out.text) out.text = decodeCharset(data, param(ct, 'charset'));
     else if (type === 'text/html' && !out.html) out.html = decodeCharset(data, param(ct, 'charset'));
     return hd;
   }
   function parseEml(buf) {
     const str = latin1(new Uint8Array(buf));
-    const out = { attachments: [], text: '', html: '' };
+    const out = { parts: [], text: '', html: '' };
     const hd = walk(str, out);
+    const attachments = [], inline = [];
+    for (const p of out.parts) {
+      if ((p.cid && out.html.includes('cid:' + p.cid)) || (p.loc && out.html.includes(p.loc))) inline.push(p); else attachments.push(p);
+    }
     let date = ''; try { const d = new Date(hd['date']); if (!isNaN(d)) date = d.toISOString(); } catch (e) {}
-    return { subject: decodeWords(hd['subject'] || '').trim(), from: decodeWords(hd['from'] || ''), date, body: (out.text || htmlToText(out.html)).replace(/\r\n/g, '\n').trim(), attachments: out.attachments };
+    return { subject: decodeWords(hd['subject'] || '').trim(), from: decodeWords(hd['from'] || ''), date, body: (out.text || htmlToText(out.html)).replace(/\r\n/g, '\n').trim(), html: out.html, attachments, inline };
   }
   function htmlToText(html) {
     if (!html) return '';
@@ -183,5 +276,5 @@ const MailParser = (() => {
     if (u8[0] === 0xD0 && u8[1] === 0xCF) return parseMsg(buf);
     return parseEml(buf);
   }
-  return { parseFile, parseMsg, parseEml, htmlToText };
+  return { parseFile, parseMsg, parseEml, htmlToText, guessType, decompressRTF, htmlFromRTF };
 })();

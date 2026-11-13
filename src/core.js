@@ -5,7 +5,7 @@
    zijn: GitHub (alleen om updates/widgets op te halen, er gaat niets heen),
    radiostreams, en websites/favicons die je zelf in een knop zet.
    ========================================================================== */
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const DEFAULT_REPO = 'MehMienLepke/streamline';
 const SCHEMA = 1;
 const $ = (s, r = document) => r.querySelector(s);
@@ -53,7 +53,7 @@ function openModal({ title, body, foot, wide, onClose }) {
   box.append(
     h('div', { class: 'modal-head' }, h('h3', {}, title), ib('x', 'Sluiten', () => m.close())),
     h('div', { class: 'modal-body' }, body),
-    foot ? h('div', { class: 'modal-foot' }, foot) : null
+    foot ? h('div', { class: 'modal-foot' }, foot) : ''
   );
   root.addEventListener('pointerdown', e => { if (e.target === root) m.close(); });
   root.append(box); document.body.append(root); modalStack.push(m);
@@ -518,6 +518,7 @@ window.addEventListener('resize', debounce(layout, 60));
 function goPage(id) {
   if (!S.pages.find(p => p.id === id)) return;
   S.activePage = id; save(); renderAll();
+  if (typeof checkModulePrompt === 'function') checkModulePrompt();
 }
 
 /* ---------- bewerkmodus ---------- */
@@ -602,8 +603,9 @@ function freeSpot(w, hgt, ignoreBoxes = true) {
   return { x: 0, y: pageBottom() };
 }
 function pageBottom(items = [...S.global, ...currentPage().items]) { return items.reduce((m, i) => Math.max(m, i.y + i.h), 0); }
-function addItem(type, cfg) {
+async function addItem(type, cfg) {
   const def = WIDGETS[type]; if (!def) return;
+  if (def.beforeAdd) { cfg = await def.beforeAdd({ ...(cfg || {}) }); if (!cfg) return; }
   pushHistory();
   const size = def.size || { w: 4, h: 4 };
   const spot = freeSpot(size.w, size.h, type !== 'box');
@@ -691,6 +693,7 @@ function renderRepo() {
 function renderRepoList(list) {
   list.innerHTML = '';
   const q = repoFilter.toLowerCase();
+  if (typeof teamRepoGroups === 'function') for (const g of teamRepoGroups(q)) list.append(g);
   for (const [g, label] of GROUPS) {
     const defs = Object.values(WIDGETS).filter(d => d.group === g && !d.hidden && (!q || (d.name + ' ' + (d.desc || '')).toLowerCase().includes(q)));
     if (!defs.length && g !== 'uitbreiding') continue;
@@ -840,13 +843,20 @@ function checkReminders() {
   if (!S) return;
   const now = Date.now();
   for (const p of S.pages) for (const it of p.items) {
+    if (it.type === 'teamnotes') {
+      for (const r of Object.values(it.data.rem || {})) if (r.remindAt && !r.reminded && r.remindAt <= now) {
+        const n = (typeof Team !== 'undefined' ? Team.notes : []).find(x => x.id === r.id);
+        fireReminder(p, it, r, n ? (h('div', { html: n.html || '' }).textContent || '').trim().slice(0, 140) || 'Teamnotitie' : 'Teamnotitie');
+      }
+      continue;
+    }
     const entries = it.type === 'todo' ? (it.data.items || []).filter(t => !t.done) : it.type === 'notes' ? (it.data.notes || []) : [];
     for (const en of entries) if (en.remindAt && !en.reminded && en.remindAt <= now) fireReminder(p, it, en);
   }
 }
-function fireReminder(page, item, en) {
+function fireReminder(page, item, en, textOverride) {
   en.reminded = true; save();
-  const text = en.text || (h('div', { html: en.html || '' }).textContent || '').trim().slice(0, 140) || 'Notitie';
+  const text = textOverride || en.text || (h('div', { html: en.html || '' }).textContent || '').trim().slice(0, 140) || 'Notitie';
   beep();
   try { if ('Notification' in window && Notification.permission === 'granted') new Notification('Streamline — herinnering', { body: text, tag: en.id }); } catch (e) {}
   let flip = false; clearInterval(titleFlash);

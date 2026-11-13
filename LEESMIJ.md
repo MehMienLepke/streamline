@@ -48,7 +48,8 @@ een tekstbestand; kopieer het als back-up of geef het aan een collega.
 | Achtergrondvak | Groepeert widgets. Kleur, doorzichtigheid, afronding en rand per vak. |
 | Link-knop | Opent een website in een nieuw tabblad. Icoon uit de catalogus of de favicon van de site. |
 | Actieknop | Opent één of meer websites en kan daarna wachten, klikken, velden invullen, tekst typen en toetsen indrukken. Met `{vraag:Zoekterm}` vraagt hij bij het klikken om een waarde. |
-| Teamtaken / Teamleden | Zie hoofdstuk 8. |
+| Teamtaken / Teamnotities / Teamleden | Zie hoofdstuk 8. |
+| Afbeelding | Toont één afbeelding: als vormgeving, of met een link als klikbare snelkoppeling. Sleep een afbeelding op de widget of kies er een in de instellingen. Kies *Vullen* of *Passend*, de hoeken, en een onderschrift. |
 | Radio | Nederlandse zenders (lijst van nederland.fm). Zenders zijn aan te passen. |
 | To do's | Prioriteit hoog (rood), medium (oranje), laag (geel). Nieuwe taken worden op prioriteit ingevoegd; daarna versleep je ze zelf. Teamtaken op jouw naam staan er ook in. Sleep een e-mail uit Outlook erop: de onderwerpregel wordt de taak. Belletje = herinnering. |
 | Notities | Notities met opmaak (vet, kopjes, lijsten, afvinklijst, markeren, links) en een herinnering. |
@@ -138,13 +139,31 @@ ook kunnen bereiken. Streamline maakt daar de map `Streamline team - Naam`.
   titel. Streamline vraagt of je ook de inhoud en de bijlagen wilt delen. Bij
   *Instellingen → Team* zet je dat op *Elke keer vragen*, *Standaard aan* of
   *Standaard uit*.
-- Met het poppetje rechts wijs je een taak toe aan een collega (met zijn of haar
-  foto). Die krijgt een melding en ziet de taak in de eigen takenlijst met het
-  teamicoontje, standaard bovenaan.
+- Met het poppetje rechts wijs je een taak toe aan één of meer collega's (met
+  foto). Wie een taak krijgt, krijgt een melding en ziet de taak in de eigen
+  takenlijst met het teamicoontje, standaard bovenaan.
 - In je eigen takenlijst versleep je taken aan het streepje links om zelf de
   volgorde te bepalen.
-- Klik op een taak om hem te openen: titel, prioriteit, toewijzing, de e-mail en
-  bijlagen.
+- Klik op een taak om hem te openen: titel, prioriteit, toewijzing, en de e-mail
+  zoals hij eruitzag, met de afbeeldingen in de tekst (zoals een logo in de
+  handtekening). Afbeeldingen die van internet geladen zouden worden, blokkeert
+  Streamline voor je privacy; met *Toch laden* zie je ze alsnog.
+- Echte bijlagen staan onder de mail. Klik erop om ze in een pop-up te bekijken:
+  afbeeldingen, PDF, Word, Excel, PowerPoint, tekst, audio, video en
+  doorgestuurde mails. Bovenin kies je *Downloaden* of *Alle downloaden* (zip).
+
+**Teamnotities** — Voeg in het widgetpaneel *Teamnotities* toe en geef de
+module een naam. Wat je erin schrijft, ziet het hele team. Typt iemand in een
+notitie, dan zien anderen "Sanne typt…" en kunnen ze even niet in die notitie
+schrijven. Het belletje is een persoonlijke herinnering: alleen jij krijgt die.
+
+**Gedeelde modules** — Elke *Teamtaken*- of *Teamnotities*-widget die je nieuw
+toevoegt, is een eigen gedeelde module (bijvoorbeeld een aparte takenlijst per
+project). Zet een collega er iets in, dan vraagt Streamline op jouw team-tabblad
+of je die module ook wilt toevoegen. Kies je *Nee*, dan vind je hem later terug
+bovenaan het widgetpaneel (tandwiel) onder "[naam] heeft inhoud toegevoegd".
+Bij *Instellingen → Team → Gedeelde modules* zie je ze allemaal; de maker kan
+een module daar voor iedereen verwijderen.
 
 **Naam en foto** — *Instellingen → Team → Jouw profiel*, of klik op jezelf in de
 widget *Teamleden*.

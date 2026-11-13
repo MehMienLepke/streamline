@@ -600,6 +600,76 @@ reg({
   },
 });
 
+/* ---------- Afbeelding ---------- */
+// De afbeelding wordt verkleind (max. 2000 px) en in je eigen instellingenbestand bewaard.
+function loadImageFile(file) {
+  return new Promise((res, rej) => {
+    const type = file?.type || MailParser.guessType(file?.name || '');
+    if (!file || !type.startsWith('image/')) return rej(new Error('Dit is geen afbeelding'));
+    if (type === 'image/svg+xml' || type === 'image/gif') {
+      if (file.size > 3e6) return rej(new Error('Bestand is te groot (max. 3 MB voor GIF/SVG)'));
+      const r = new FileReader(); r.onload = () => res({ src: r.result, w: 0, h: 0 }); r.onerror = rej; r.readAsDataURL(file); return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      const max = 2000, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * k), hh = Math.round(img.naturalHeight * k);
+      const cv = h('canvas', { width: w, height: hh }), c = cv.getContext('2d'); c.imageSmoothingQuality = 'high'; c.drawImage(img, 0, 0, w, hh);
+      URL.revokeObjectURL(img.src);
+      const png = type === 'image/png' || type === 'image/webp';
+      res({ src: cv.toDataURL(png ? 'image/png' : 'image/jpeg', .9), w, h: hh });
+    };
+    img.onerror = () => rej(new Error('Kon de afbeelding niet lezen'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+reg({
+  type: 'image', name: 'Afbeelding', desc: 'Toon één afbeelding, als vormgeving of als klikbare snelkoppeling', icon: 'image', group: 'basis', card: false,
+  size: { w: 5, h: 5 }, min: { w: 1, h: 1 },
+  defaults: { fit: 'cover', posX: 50, posY: 50, frame: 'card', radiusMode: 'theme', radius: 22, link: '', caption: '', captionPos: 'bottom', alt: '' },
+  fields: [
+    { key: 'fit', label: 'Weergave', type: 'seg', options: [['cover', 'Vullen (bijsnijden)'], ['contain', 'Passend (hele afbeelding)']] },
+    { key: 'posX', label: 'Uitsnede horizontaal', type: 'range', min: 0, max: 100, unit: '%', showIf: c => c.fit === 'cover' },
+    { key: 'posY', label: 'Uitsnede verticaal', type: 'range', min: 0, max: 100, unit: '%', showIf: c => c.fit === 'cover' },
+    { key: 'frame', label: 'Achtergrond', type: 'seg', options: [['card', 'Kaart'], ['none', 'Geen (transparant)']] },
+    { key: 'radiusMode', label: 'Hoeken', type: 'seg', options: [['theme', 'Zoals het thema'], ['custom', 'Zelf kiezen']] },
+    { key: 'radius', label: 'Afronding', type: 'range', min: 0, max: 64, unit: 'px', showIf: c => c.radiusMode === 'custom' },
+    { key: 'link', label: 'Bij klikken openen (optioneel)', type: 'url', placeholder: 'https://…', hint: 'Handig om de afbeelding als snelle knop te gebruiken.' },
+    { key: 'caption', label: 'Onderschrift (optioneel)', type: 'text' },
+    { key: 'captionPos', label: 'Plaats onderschrift', type: 'seg', options: [['bottom', 'Onder'], ['overlay', 'Over de afbeelding']], showIf: c => !!c.caption },
+    { key: 'alt', label: 'Beschrijving voor schermlezers', type: 'text' },
+  ],
+  editor(el, cfg, item) {
+    const prev = h('div', { class: 'imgprev' });
+    const draw = () => { prev.innerHTML = ''; prev.append(item.data.src ? h('img', { src: item.data.src, alt: '' }) : h('span', { class: 'hint' }, 'Nog geen afbeelding')); };
+    const file = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' }, onchange: async () => { try { const r = await loadImageFile(file.files[0]); item.data.src = r.src; item.data.name = file.files[0].name; draw(); save(); buildItem(item); } catch (e) { toast(e.message); } } });
+    draw();
+    el.append(h('div', { class: 'sect' }, h('h4', {}, 'Afbeelding'), prev, file,
+      h('div', { class: 'row', style: { marginTop: '8px' } }, h('button', { class: 'btn sm', onclick: () => file.click() }, h('span', { html: icon('upload', 14) }), item.data.src ? 'Andere afbeelding' : 'Afbeelding kiezen'),
+        item.data.src ? h('button', { class: 'btn sm', onclick: () => { delete item.data.src; draw(); save(); buildItem(item); } }, 'Weghalen') : null),
+      h('p', { class: 'hint' }, 'Tip: je kunt ook buiten de bewerkmodus een afbeelding direct op de widget slepen.')));
+  },
+  render(el, ctx) {
+    const c = ctx.config, d = ctx.item.data;
+    const radius = c.radiusMode === 'custom' ? c.radius + 'px' : 'var(--r)';
+    const box = h('div', { class: 'imgw' + (c.frame === 'none' ? ' bare' : '') + (c.link ? ' link' : ''), style: { borderRadius: radius } });
+    const setFile = async f => { try { const r = await loadImageFile(f); d.src = r.src; d.name = f.name; ctx.save(); ctx.rerender(); } catch (e) { toast(e.message); } };
+    if (d.src) {
+      const img = h('img', { src: d.src, alt: c.alt || c.caption || '', draggable: false, style: { objectFit: c.fit === 'contain' ? 'contain' : 'cover', objectPosition: `${c.posX}% ${c.posY}%`, borderRadius: c.caption && c.captionPos !== 'overlay' ? '0' : radius } });
+      box.append(h('div', { class: 'imgw-img' }, img));
+      if (c.caption) box.append(h('div', { class: 'imgw-cap ' + (c.captionPos === 'overlay' ? 'over' : '') }, c.caption));
+      if (c.link) { box.title = c.link; box.onclick = () => { if (!editing) openUrl(c.link); }; }
+    } else {
+      const inp = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' }, onchange: () => setFile(inp.files[0]) });
+      box.append(inp, h('div', { class: 'cr-drop', style: { margin: '10px' }, onclick: () => !editing && inp.click(), html: icon('image', 30) + '<b style="color:var(--ink)">Sleep een afbeelding hierheen</b><span>of klik om er een te kiezen</span>' }));
+    }
+    box.addEventListener('dragover', e => { if (editing || ![...e.dataTransfer.types].includes('Files')) return; e.preventDefault(); e.stopPropagation(); box.classList.add('dropping'); });
+    box.addEventListener('dragleave', e => { if (!box.contains(e.relatedTarget)) box.classList.remove('dropping'); });
+    box.addEventListener('drop', e => { if (editing) return; e.preventDefault(); e.stopPropagation(); box.classList.remove('dropping'); const f = [...e.dataTransfer.files].find(x => (x.type || MailParser.guessType(x.name)).startsWith('image/')); if (f) setFile(f); else toast('Sleep een afbeelding (JPG, PNG, WebP, GIF of SVG)'); });
+    el.append(box);
+  },
+});
+
 /* ---------- Afbeeldingen bijsnijden ---------- */
 const CROP = new Map();
 const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();

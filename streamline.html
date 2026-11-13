@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="streamline-app" content="1.1.0">
+<meta name="streamline-app" content="1.2.0">
 <!-- Privacy-slot: deze pagina mag alleen GitHub lezen (updates/widgets). Elk ander verzoek om gegevens te versturen wordt door de browser geblokkeerd. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline'; img-src * data: blob:; media-src *; connect-src https://raw.githubusercontent.com; font-src data:; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline'; img-src * data: blob:; media-src *; connect-src https://raw.githubusercontent.com; font-src data:; frame-src blob: data:; object-src blob:; form-action 'none'; base-uri 'none'">
 <title>Streamline</title>
 <style>
 :root{
@@ -442,6 +442,64 @@ button.member:hover{background:var(--accent-soft)}
 .swatch-dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line);padding:0}
 .btn:disabled,.seg button:disabled{opacity:.55;cursor:default}
 
+/* ---------- v1.2: meerdere personen, mailweergave, bijlagen, notities, afbeelding ---------- */
+.avstack{display:inline-flex;align-items:center}
+.avstack .av+.av{margin-left:-8px}
+.av.more{background:var(--surface-2)!important;color:var(--ink)!important;font-weight:800}
+.iconbtn.asg{width:auto;min-width:34px;padding:0 4px;border-radius:999px}
+.mini.av-btn{width:auto;min-width:30px;border-radius:999px;padding:0 2px}
+.pop .opt .pick{width:20px;height:20px;border-radius:6px;border:2px solid var(--line);display:grid;place-items:center;flex:none}
+.pop .opt .pick.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.mailview{margin-top:6px;padding-top:8px;border-top:1px solid var(--line)}
+.mailframe{display:flex;flex-direction:column;gap:6px}
+.mailframe iframe{width:100%;border:0;border-radius:var(--r-xs);background:#fff;min-height:80px}
+.mailwarn{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.mailwarn .linkbtn{color:var(--accent)}
+.atts{align-items:center}
+.att{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-xs);padding:7px 10px;max-width:100%;color:var(--ink);font-size:12.5px;font-weight:600}
+.att:hover{border-color:var(--accent);background:var(--accent-soft)}
+.att .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
+.modal.pv{width:min(1100px,100%);height:min(90vh,900px);max-height:none}
+.modal.pv .modal-body{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
+.pv-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.pv-title{display:flex;align-items:center;gap:8px;min-width:0}
+.pv-title b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:420px}
+.pv-area{flex:1;min-height:0;overflow:auto;background:var(--surface-2);border-radius:var(--r-sm);padding:14px;display:flex;flex-direction:column}
+.pv-img{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+.pv-img img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;box-shadow:var(--shadow);background:repeating-conic-gradient(#e6e6e6 0 25%,#fff 0 50%) 0 0/16px 16px}
+.pv-pdf{flex:1;width:100%;border:0;border-radius:6px;background:#fff;min-height:60vh}
+.pv-video{max-width:100%;max-height:70vh;margin:auto;border-radius:6px}
+.pv-text{white-space:pre-wrap;font:12.5px/1.5 Consolas,"Cascadia Mono",monospace;margin:0;background:var(--surface);padding:14px;border-radius:6px}
+.docprev{background:var(--surface);padding:18px 22px;border-radius:6px;font-size:14px;line-height:1.55}
+.docprev h2{font:600 20px var(--font-display);margin:14px 0 6px}.docprev h3{font:600 16px var(--font-display);margin:12px 0 4px}
+.docprev p{margin:0 0 8px;white-space:pre-wrap}
+.docprev table{border-collapse:collapse;margin:8px 0;font-size:12.5px}
+.docprev td{border:1px solid var(--line);padding:4px 8px;vertical-align:top}
+.xlwrap{overflow:auto}
+.xlwrap td{white-space:nowrap;font-variant-numeric:tabular-nums}
+.slide{border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin-bottom:10px}
+.slide .lbl{display:block;margin-bottom:4px}
+.note.team .nf{gap:6px}
+.note.team .nf .when{margin-right:auto}
+.note.locked{opacity:.85}
+.note.locked .ne{cursor:not-allowed}
+.modprompt{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:90;width:min(620px,calc(100vw - 32px));display:flex;align-items:center;gap:14px;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow-lg);padding:16px 18px;border-left:6px solid var(--accent);animation:tin .3s ease}
+.modprompt b{font:600 15px var(--font-display);display:block;margin-bottom:2px}
+.repo-group.team-shared{background:var(--accent-soft);border-radius:var(--r-sm);padding:10px 10px 4px;margin:0 -4px 16px}
+.repo-group.team-shared h4{color:var(--accent)}
+.repo-group.team-shared .repo-item{background:var(--surface)}
+.imgw{width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;background:var(--surface);box-shadow:var(--shadow);position:relative}
+.imgw.bare{background:transparent;box-shadow:none}
+.imgw.link{cursor:pointer;transition:transform .15s,box-shadow .15s}
+.imgw.link:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.imgw-img{flex:1;min-height:0;display:flex}
+.imgw-img img{width:100%;height:100%;display:block}
+.imgw-cap{padding:8px 14px;font-size:13px;font-weight:600}
+.imgw-cap.over{position:absolute;left:0;right:0;bottom:0;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.6));padding:22px 16px 12px}
+.imgw .cr-drop{flex:1}
+.imgprev{height:150px;border-radius:var(--r-sm);background:var(--surface-2);display:grid;place-items:center;overflow:hidden}
+.imgprev img{max-width:100%;max-height:150px;object-fit:contain}
+
 </style>
 </head>
 <body>
@@ -603,7 +661,7 @@ function icon(name, size){
    zijn: GitHub (alleen om updates/widgets op te halen, er gaat niets heen),
    radiostreams, en websites/favicons die je zelf in een knop zet.
    ========================================================================== */
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const DEFAULT_REPO = 'MehMienLepke/streamline';
 const SCHEMA = 1;
 const $ = (s, r = document) => r.querySelector(s);
@@ -651,7 +709,7 @@ function openModal({ title, body, foot, wide, onClose }) {
   box.append(
     h('div', { class: 'modal-head' }, h('h3', {}, title), ib('x', 'Sluiten', () => m.close())),
     h('div', { class: 'modal-body' }, body),
-    foot ? h('div', { class: 'modal-foot' }, foot) : null
+    foot ? h('div', { class: 'modal-foot' }, foot) : ''
   );
   root.addEventListener('pointerdown', e => { if (e.target === root) m.close(); });
   root.append(box); document.body.append(root); modalStack.push(m);
@@ -1116,6 +1174,7 @@ window.addEventListener('resize', debounce(layout, 60));
 function goPage(id) {
   if (!S.pages.find(p => p.id === id)) return;
   S.activePage = id; save(); renderAll();
+  if (typeof checkModulePrompt === 'function') checkModulePrompt();
 }
 
 /* ---------- bewerkmodus ---------- */
@@ -1200,8 +1259,9 @@ function freeSpot(w, hgt, ignoreBoxes = true) {
   return { x: 0, y: pageBottom() };
 }
 function pageBottom(items = [...S.global, ...currentPage().items]) { return items.reduce((m, i) => Math.max(m, i.y + i.h), 0); }
-function addItem(type, cfg) {
+async function addItem(type, cfg) {
   const def = WIDGETS[type]; if (!def) return;
+  if (def.beforeAdd) { cfg = await def.beforeAdd({ ...(cfg || {}) }); if (!cfg) return; }
   pushHistory();
   const size = def.size || { w: 4, h: 4 };
   const spot = freeSpot(size.w, size.h, type !== 'box');
@@ -1289,6 +1349,7 @@ function renderRepo() {
 function renderRepoList(list) {
   list.innerHTML = '';
   const q = repoFilter.toLowerCase();
+  if (typeof teamRepoGroups === 'function') for (const g of teamRepoGroups(q)) list.append(g);
   for (const [g, label] of GROUPS) {
     const defs = Object.values(WIDGETS).filter(d => d.group === g && !d.hidden && (!q || (d.name + ' ' + (d.desc || '')).toLowerCase().includes(q)));
     if (!defs.length && g !== 'uitbreiding') continue;
@@ -1438,13 +1499,20 @@ function checkReminders() {
   if (!S) return;
   const now = Date.now();
   for (const p of S.pages) for (const it of p.items) {
+    if (it.type === 'teamnotes') {
+      for (const r of Object.values(it.data.rem || {})) if (r.remindAt && !r.reminded && r.remindAt <= now) {
+        const n = (typeof Team !== 'undefined' ? Team.notes : []).find(x => x.id === r.id);
+        fireReminder(p, it, r, n ? (h('div', { html: n.html || '' }).textContent || '').trim().slice(0, 140) || 'Teamnotitie' : 'Teamnotitie');
+      }
+      continue;
+    }
     const entries = it.type === 'todo' ? (it.data.items || []).filter(t => !t.done) : it.type === 'notes' ? (it.data.notes || []) : [];
     for (const en of entries) if (en.remindAt && !en.reminded && en.remindAt <= now) fireReminder(p, it, en);
   }
 }
-function fireReminder(page, item, en) {
+function fireReminder(page, item, en, textOverride) {
   en.reminded = true; save();
-  const text = en.text || (h('div', { html: en.html || '' }).textContent || '').trim().slice(0, 140) || 'Notitie';
+  const text = textOverride || en.text || (h('div', { html: en.html || '' }).textContent || '').trim().slice(0, 140) || 'Notitie';
   beep();
   try { if ('Notification' in window && Notification.permission === 'granted') new Notification('Streamline — herinnering', { body: text, tag: en.id }); } catch (e) {}
   let flip = false; clearInterval(titleFlash);
@@ -2618,6 +2686,76 @@ reg({
   },
 });
 
+/* ---------- Afbeelding ---------- */
+// De afbeelding wordt verkleind (max. 2000 px) en in je eigen instellingenbestand bewaard.
+function loadImageFile(file) {
+  return new Promise((res, rej) => {
+    const type = file?.type || MailParser.guessType(file?.name || '');
+    if (!file || !type.startsWith('image/')) return rej(new Error('Dit is geen afbeelding'));
+    if (type === 'image/svg+xml' || type === 'image/gif') {
+      if (file.size > 3e6) return rej(new Error('Bestand is te groot (max. 3 MB voor GIF/SVG)'));
+      const r = new FileReader(); r.onload = () => res({ src: r.result, w: 0, h: 0 }); r.onerror = rej; r.readAsDataURL(file); return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      const max = 2000, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * k), hh = Math.round(img.naturalHeight * k);
+      const cv = h('canvas', { width: w, height: hh }), c = cv.getContext('2d'); c.imageSmoothingQuality = 'high'; c.drawImage(img, 0, 0, w, hh);
+      URL.revokeObjectURL(img.src);
+      const png = type === 'image/png' || type === 'image/webp';
+      res({ src: cv.toDataURL(png ? 'image/png' : 'image/jpeg', .9), w, h: hh });
+    };
+    img.onerror = () => rej(new Error('Kon de afbeelding niet lezen'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+reg({
+  type: 'image', name: 'Afbeelding', desc: 'Toon één afbeelding, als vormgeving of als klikbare snelkoppeling', icon: 'image', group: 'basis', card: false,
+  size: { w: 5, h: 5 }, min: { w: 1, h: 1 },
+  defaults: { fit: 'cover', posX: 50, posY: 50, frame: 'card', radiusMode: 'theme', radius: 22, link: '', caption: '', captionPos: 'bottom', alt: '' },
+  fields: [
+    { key: 'fit', label: 'Weergave', type: 'seg', options: [['cover', 'Vullen (bijsnijden)'], ['contain', 'Passend (hele afbeelding)']] },
+    { key: 'posX', label: 'Uitsnede horizontaal', type: 'range', min: 0, max: 100, unit: '%', showIf: c => c.fit === 'cover' },
+    { key: 'posY', label: 'Uitsnede verticaal', type: 'range', min: 0, max: 100, unit: '%', showIf: c => c.fit === 'cover' },
+    { key: 'frame', label: 'Achtergrond', type: 'seg', options: [['card', 'Kaart'], ['none', 'Geen (transparant)']] },
+    { key: 'radiusMode', label: 'Hoeken', type: 'seg', options: [['theme', 'Zoals het thema'], ['custom', 'Zelf kiezen']] },
+    { key: 'radius', label: 'Afronding', type: 'range', min: 0, max: 64, unit: 'px', showIf: c => c.radiusMode === 'custom' },
+    { key: 'link', label: 'Bij klikken openen (optioneel)', type: 'url', placeholder: 'https://…', hint: 'Handig om de afbeelding als snelle knop te gebruiken.' },
+    { key: 'caption', label: 'Onderschrift (optioneel)', type: 'text' },
+    { key: 'captionPos', label: 'Plaats onderschrift', type: 'seg', options: [['bottom', 'Onder'], ['overlay', 'Over de afbeelding']], showIf: c => !!c.caption },
+    { key: 'alt', label: 'Beschrijving voor schermlezers', type: 'text' },
+  ],
+  editor(el, cfg, item) {
+    const prev = h('div', { class: 'imgprev' });
+    const draw = () => { prev.innerHTML = ''; prev.append(item.data.src ? h('img', { src: item.data.src, alt: '' }) : h('span', { class: 'hint' }, 'Nog geen afbeelding')); };
+    const file = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' }, onchange: async () => { try { const r = await loadImageFile(file.files[0]); item.data.src = r.src; item.data.name = file.files[0].name; draw(); save(); buildItem(item); } catch (e) { toast(e.message); } } });
+    draw();
+    el.append(h('div', { class: 'sect' }, h('h4', {}, 'Afbeelding'), prev, file,
+      h('div', { class: 'row', style: { marginTop: '8px' } }, h('button', { class: 'btn sm', onclick: () => file.click() }, h('span', { html: icon('upload', 14) }), item.data.src ? 'Andere afbeelding' : 'Afbeelding kiezen'),
+        item.data.src ? h('button', { class: 'btn sm', onclick: () => { delete item.data.src; draw(); save(); buildItem(item); } }, 'Weghalen') : null),
+      h('p', { class: 'hint' }, 'Tip: je kunt ook buiten de bewerkmodus een afbeelding direct op de widget slepen.')));
+  },
+  render(el, ctx) {
+    const c = ctx.config, d = ctx.item.data;
+    const radius = c.radiusMode === 'custom' ? c.radius + 'px' : 'var(--r)';
+    const box = h('div', { class: 'imgw' + (c.frame === 'none' ? ' bare' : '') + (c.link ? ' link' : ''), style: { borderRadius: radius } });
+    const setFile = async f => { try { const r = await loadImageFile(f); d.src = r.src; d.name = f.name; ctx.save(); ctx.rerender(); } catch (e) { toast(e.message); } };
+    if (d.src) {
+      const img = h('img', { src: d.src, alt: c.alt || c.caption || '', draggable: false, style: { objectFit: c.fit === 'contain' ? 'contain' : 'cover', objectPosition: `${c.posX}% ${c.posY}%`, borderRadius: c.caption && c.captionPos !== 'overlay' ? '0' : radius } });
+      box.append(h('div', { class: 'imgw-img' }, img));
+      if (c.caption) box.append(h('div', { class: 'imgw-cap ' + (c.captionPos === 'overlay' ? 'over' : '') }, c.caption));
+      if (c.link) { box.title = c.link; box.onclick = () => { if (!editing) openUrl(c.link); }; }
+    } else {
+      const inp = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' }, onchange: () => setFile(inp.files[0]) });
+      box.append(inp, h('div', { class: 'cr-drop', style: { margin: '10px' }, onclick: () => !editing && inp.click(), html: icon('image', 30) + '<b style="color:var(--ink)">Sleep een afbeelding hierheen</b><span>of klik om er een te kiezen</span>' }));
+    }
+    box.addEventListener('dragover', e => { if (editing || ![...e.dataTransfer.types].includes('Files')) return; e.preventDefault(); e.stopPropagation(); box.classList.add('dropping'); });
+    box.addEventListener('dragleave', e => { if (!box.contains(e.relatedTarget)) box.classList.remove('dropping'); });
+    box.addEventListener('drop', e => { if (editing) return; e.preventDefault(); e.stopPropagation(); box.classList.remove('dropping'); const f = [...e.dataTransfer.files].find(x => (x.type || MailParser.guessType(x.name)).startsWith('image/')); if (f) setFile(f); else toast('Sleep een afbeelding (JPG, PNG, WebP, GIF of SVG)'); });
+    el.append(box);
+  },
+});
+
 /* ---------- Afbeeldingen bijsnijden ---------- */
 const CROP = new Map();
 const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
@@ -2972,20 +3110,105 @@ const MailParser = (() => {
     }
     return null;
   }
+
+  /* ---------- Outlook RTF (gecomprimeerd) → HTML ---------- */
+  const RTF_PRE = '{\\rtf1\\ansi\\mac\\deff0\\deftab720{\\fonttbl;}{\\f0\\fnil \\froman \\fswiss \\fmodern \\fscript \\fdecor MS Sans SerifSymbolArialTimes New RomanCourier{\\colortbl\\red0\\green0\\blue0\r\n\\par \\pard\\plain\\f0\\fs20\\b\\i\\u\\tab\\tx';
+  function decompressRTF(src) {
+    const dv = new DataView(src.buffer, src.byteOffset, src.byteLength);
+    const comp = dv.getUint32(0, true), raw = dv.getUint32(4, true), type = dv.getUint32(8, true);
+    if (type === 0x414C454D) return src.subarray(16, 16 + raw); // 'MELA' = niet gecomprimeerd
+    if (type !== 0x75465A4C) throw new Error('onbekend RTF-formaat');
+    const dict = new Uint8Array(4096); for (let i = 0; i < RTF_PRE.length; i++) dict[i] = RTF_PRE.charCodeAt(i);
+    let wp = RTF_PRE.length; const out = []; let p = 16; const end = Math.min(src.length, comp + 4);
+    outer: while (p < end) {
+      const ctrl = src[p++];
+      for (let bit = 0; bit < 8 && p < end; bit++) {
+        if (ctrl & (1 << bit)) {
+          const v = (src[p] << 8) | src[p + 1]; p += 2;
+          const off = v >> 4, len = (v & 15) + 2;
+          if (off === wp) break outer;
+          for (let i = 0; i < len; i++) { const b = dict[(off + i) & 4095]; out.push(b); dict[wp] = b; wp = (wp + 1) & 4095; }
+        } else { const b = src[p++]; out.push(b); dict[wp] = b; wp = (wp + 1) & 4095; }
+      }
+    }
+    return Uint8Array.from(out);
+  }
+  const SKIP_DEST = new Set(['fonttbl', 'colortbl', 'stylesheet', 'info', 'pict', 'header', 'footer', 'listtable', 'listoverridetable', 'rsidtbl', 'generator', 'xmlnstbl', 'themedata', 'colorschememapping', 'latentstyles', 'datastore', 'mmathPr', 'pgdsctbl', 'filetbl', 'revtbl', 'object', 'objdata', 'bkmkstart', 'bkmkend', 'fldinst']);
+  const CHARSET_CP = { 0: 0, 77: 10000, 128: 932, 129: 949, 130: 1361, 134: 936, 136: 950, 161: 1253, 162: 1254, 163: 1258, 177: 1255, 178: 1256, 186: 1257, 204: 1251, 222: 874, 238: 1250 };
+  const CP_LABEL = { 932: 'shift_jis', 949: 'euc-kr', 936: 'gbk', 950: 'big5', 10000: 'macintosh', 1361: 'euc-kr' };
+  // Haalt de oorspronkelijke HTML uit Outlooks RTF ("de-encapsulation", MS-OXRTFEX)
+  function htmlFromRTF(bytes) {
+    const s = latin1(bytes);
+    if (!/\\fromhtml1/.test(s.slice(0, 2000))) return '';
+    let cp = 1252; const m = /\\ansicpg(\d+)/.exec(s.slice(0, 2000)); if (m) cp = +m[1];
+    const decoders = {};
+    const decFor = c => decoders[c] ||= (() => { try { return new TextDecoder(CP_LABEL[c] || 'windows-' + c); } catch (e) { return new TextDecoder('windows-1252'); } })();
+    // lettertypen met hun tekenset (bepaalt hoe \'xx-tekens gelezen worden, bijv. Japans)
+    const fontCp = {};
+    const ft = /\{\\fonttbl([\s\S]*?)\}\s*\}/.exec(s.slice(0, 200000));
+    if (ft) for (const fm of ft[1].matchAll(/\\f(\d+)[^;]*?\\fcharset(\d+)/g)) { const c = CHARSET_CP[+fm[2]]; if (c) fontCp[fm[1]] = c; }
+    const pieces = []; let bytesBuf = [], bufCp = cp;
+    const flush = () => { if (bytesBuf.length) { pieces.push(decFor(bufCp).decode(Uint8Array.from(bytesBuf))); bytesBuf = []; } };
+    let st = { skip: false, tag: false, rtfOnly: false, uc: 1, cp }; const stack = [];
+    let skipChars = 0, first = false;
+    const out = () => !st.skip && (st.tag || !st.rtfOnly);
+    const emitByte = b => { if (skipChars > 0) { skipChars--; return; } if (out()) { if (st.cp !== bufCp) { flush(); bufCp = st.cp; } bytesBuf.push(b); } };
+    const emitStr = t => { if (out()) { flush(); pieces.push(t); } };
+    for (let i = 0; i < s.length;) {
+      const c = s[i];
+      if (c === '{') { stack.push(st); st = { ...st }; first = true; i++; continue; }
+      if (c === '}') { st = stack.pop() || st; first = false; i++; continue; }
+      if (c === '\\') {
+        const n = s[i + 1];
+        if (n === '\\' || n === '{' || n === '}') { emitByte(n.charCodeAt(0)); i += 2; first = false; continue; }
+        if (n === "'") { emitByte(parseInt(s.substr(i + 2, 2), 16)); i += 4; first = false; continue; }
+        if (n === '*') { i += 2; const mm = /^\\([a-zA-Z]+)(-?\d+)?/.exec(s.slice(i, i + 40)); if (mm) { if (mm[1] === 'htmltag') st.tag = true; else st.skip = true; } else st.skip = true; continue; }
+        if (n === '~') { emitStr(' '); i += 2; continue; }
+        if (n === '_') { emitStr('-'); i += 2; continue; }
+        if (n === '\r' || n === '\n') { emitStr('\r\n'); i += 2; continue; }
+        const mm = /^\\([a-zA-Z]+)(-?\d+)? ?/.exec(s.slice(i, i + 40));
+        if (!mm) { i += 2; continue; }
+        i += mm[0].length;
+        const w = mm[1], arg = mm[2] !== undefined ? +mm[2] : null;
+        if (first && SKIP_DEST.has(w)) st.skip = true;
+        first = false;
+        if (w === 'htmltag') { st.tag = true; continue; }
+        if (w === 'htmlrtf') { st.rtfOnly = arg !== 0; continue; }
+        if (w === 'f' && arg !== null) { st.cp = fontCp[arg] || cp; continue; }
+        if (w === 'par' || w === 'line') { emitStr('\r\n'); continue; }
+        if (w === 'tab') { emitStr('\t'); continue; }
+        if (w === 'uc') { st.uc = arg ?? 1; continue; }
+        if (w === 'u') { let code = arg; if (code < 0) code += 65536; emitStr(String.fromCharCode(code)); skipChars = st.uc; continue; }
+        if (w === 'lquote') emitStr('‘'); else if (w === 'rquote') emitStr('’'); else if (w === 'ldblquote') emitStr('“'); else if (w === 'rdblquote') emitStr('”'); else if (w === 'bullet') emitStr('•'); else if (w === 'endash') emitStr('–'); else if (w === 'emdash') emitStr('—');
+        continue;
+      }
+      first = false;
+      if (c === '\r' || c === '\n') { i++; continue; }
+      emitByte(c.charCodeAt(0)); i++;
+    }
+    flush();
+    return pieces.join('');
+  }
+
   function parseMsg(buf) {
     const cfb = readCFB(buf);
     const { props, streams } = msgProps(cfb, 0);
     const date = filetimeFromProps(cfb, streams['__properties_version1.0'], 32, [0x0039, 0x0E06]);
     let body = typeof props['1000'] === 'string' ? props['1000'] : '';
-    if (!body && props['1013']) body = htmlToText(typeof props['1013'] === 'string' ? props['1013'] : new TextDecoder().decode(props['1013']));
-    const attachments = [];
+    let html = '';
+    if (props['1013']) html = typeof props['1013'] === 'string' ? props['1013'] : decodeCharset(props['1013'], (/charset=["']?([\w-]+)/i.exec(latin1(props['1013'].subarray(0, 2000))) || [])[1] || 'utf-8');
+    if (!html && props['1009'] instanceof Uint8Array) { try { html = htmlFromRTF(decompressRTF(props['1009'])); } catch (e) {} }
+    if (!body && html) body = htmlToText(html);
+    const attachments = [], inline = [];
     for (const e of cfb.children(0)) {
       if (e.type !== 1 || !/^__attach_version1\.0_/i.test(e.name)) continue;
       const a = msgProps(cfb, e.idx).props;
       const data = a['3701'];
       if (!(data instanceof Uint8Array)) continue; // ingesloten mail of OLE-object: overslaan
-      const name = a['3707'] || a['3704'] || a['3001'] || 'bijlage';
-      attachments.push({ name: String(name), type: String(a['370E'] || ''), data });
+      const name = String(a['3707'] || a['3704'] || a['3001'] || 'bijlage');
+      const cid = String(a['3712'] || '').replace(/^<|>$/g, '');
+      const item = { name, type: String(a['370E'] || guessType(name)), data, cid };
+      if (cid && html && html.includes('cid:' + cid)) inline.push(item); else attachments.push(item);
     }
     const fromName = props['0C1A'] || props['0042'] || '', fromMail = props['5D01'] || props['0C1F'] || props['0065'] || '';
     const th = typeof props['007D'] === 'string' ? headers(props['007D']) : {};
@@ -2994,9 +3217,12 @@ const MailParser = (() => {
       from: th['from'] ? decodeWords(th['from']) : [fromName, fromMail && fromMail !== fromName && /@/.test(fromMail) ? `<${fromMail}>` : ''].filter(Boolean).join(' '),
       date: date ? date.toISOString() : '',
       body: String(body || '').replace(/\r\n/g, '\n').trim(),
-      attachments,
+      html, attachments, inline,
     };
   }
+  const EXT_TYPES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml', pdf: 'application/pdf', txt: 'text/plain', csv: 'text/csv', json: 'application/json', html: 'text/html', htm: 'text/html', mp3: 'audio/mpeg', wav: 'audio/wav', m4a: 'audio/mp4', mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', msg: 'application/vnd.ms-outlook', eml: 'message/rfc822', zip: 'application/zip' };
+  function guessType(name) { return EXT_TYPES[String(name).split('.').pop().toLowerCase()] || 'application/octet-stream'; }
 
   /* ---------- .eml (MIME) ---------- */
   const latin1 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return s; };
@@ -3042,18 +3268,23 @@ const MailParser = (() => {
     if (type === 'message/rfc822' && !/attachment/i.test(disp)) { walk(body, out); return hd; }
     const name = param(disp, 'filename') || param(ct, 'name');
     const data = decodeBody(body, hd['content-transfer-encoding']);
+    const cid = (hd['content-id'] || '').trim().replace(/^<|>$/g, '');
     if (name || /attachment/i.test(disp) || !type.startsWith('text/')) {
-      if (!/inline/i.test(disp) || name) out.attachments.push({ name: name || 'bijlage', type, data });
+      out.parts.push({ name: name || (cid ? cid.split('@')[0] : 'bijlage'), type, data, cid, loc: hd['content-location'] || '' });
     } else if (type === 'text/plain' && !out.text) out.text = decodeCharset(data, param(ct, 'charset'));
     else if (type === 'text/html' && !out.html) out.html = decodeCharset(data, param(ct, 'charset'));
     return hd;
   }
   function parseEml(buf) {
     const str = latin1(new Uint8Array(buf));
-    const out = { attachments: [], text: '', html: '' };
+    const out = { parts: [], text: '', html: '' };
     const hd = walk(str, out);
+    const attachments = [], inline = [];
+    for (const p of out.parts) {
+      if ((p.cid && out.html.includes('cid:' + p.cid)) || (p.loc && out.html.includes(p.loc))) inline.push(p); else attachments.push(p);
+    }
     let date = ''; try { const d = new Date(hd['date']); if (!isNaN(d)) date = d.toISOString(); } catch (e) {}
-    return { subject: decodeWords(hd['subject'] || '').trim(), from: decodeWords(hd['from'] || ''), date, body: (out.text || htmlToText(out.html)).replace(/\r\n/g, '\n').trim(), attachments: out.attachments };
+    return { subject: decodeWords(hd['subject'] || '').trim(), from: decodeWords(hd['from'] || ''), date, body: (out.text || htmlToText(out.html)).replace(/\r\n/g, '\n').trim(), html: out.html, attachments, inline };
   }
   function htmlToText(html) {
     if (!html) return '';
@@ -3066,7 +3297,7 @@ const MailParser = (() => {
     if (u8[0] === 0xD0 && u8[1] === 0xCF) return parseMsg(buf);
     return parseEml(buf);
   }
-  return { parseFile, parseMsg, parseEml, htmlToText };
+  return { parseFile, parseMsg, parseEml, htmlToText, guessType, decompressRTF, htmlFromRTF };
 })();
 
 /* ==========================================================================
@@ -3120,7 +3351,7 @@ const Team = {
   error: '',
   mine: null,                               // { profile, records, locks, updated }
   others: new Map(),                        // bestandsnaam -> { stamp, data }
-  tasks: [], members: new Map(), locks: new Map(),
+  tasks: [], notes: [], modules: [], records: new Map(), members: new Map(), locks: new Map(),
   timer: null, writeTimer: null, firstMerge: true, lastWriteError: 0,
 };
 const TEAM_PROFILE_COLORS = ['#2E5E4E', '#A4532C', '#3D5A80', '#7A4E8C', '#B5651D', '#2F6F73', '#8C3B4E', '#5C6B2E'];
@@ -3204,7 +3435,7 @@ function mergeAll() {
       }
     }
   }
-  const tasks = [];
+  const tasks = [], notes = [], modules = [], recs = new Map();
   for (const [id, best] of fields) {
     const t = { id, _f: best, conflicts: [] };
     for (const [k, fv] of Object.entries(best)) t[k] = fv.v;
@@ -3213,14 +3444,21 @@ function mergeAll() {
       const w = best[k];
       for (const fv of list) if (fv !== w && fv.by !== w.by && fv.t > (w.base || 0) && JSON.stringify(fv.v) !== JSON.stringify(w.v) && !(t.ack || {})[k + ':' + fv.t]) t.conflicts.push({ field: k, by: fv.by, v: fv.v, t: fv.t });
     }
-    if (!t.deleted && t.title !== undefined) tasks.push(t);
+    recs.set(id, t);
+    const kind = t.kind || (t.title !== undefined ? 'task' : '');
+    if (t.deleted) continue;
+    if (kind === 'task' && t.title !== undefined) { t.assignees = Array.isArray(t.assignees) ? t.assignees : (t.assignee ? [t.assignee] : []); t.module = t.module || 'main'; tasks.push(t); }
+    else if (kind === 'note') notes.push(t);
+    else if (kind === 'module') modules.push(t);
   }
-  Team.tasks = tasks;
+  Team.records = recs; Team.tasks = tasks; Team.notes = notes;
+  Team.modules = [{ id: 'main', kind: 'module', type: 'teamtasks', title: 'Teamtaken', createdBy: Team.meta?.creator, created: Team.meta?.created || 0, virtual: true }, ...modules];
   checkAssigned();
+  setTimeout(checkModulePrompt, 0);
 }
 function teamSet(id, changes, bases) {
   const me = meId(); const rec = (Team.mine.records[id] ||= { f: {} });
-  const cur = Team.tasks.find(t => t.id === id);
+  const cur = Team.records?.get(id);
   for (const [k, v] of Object.entries(changes)) {
     const f = cur?._f?.[k];
     const t = Math.max(Date.now(), (f?.t || 0) + 1);
@@ -3230,9 +3468,11 @@ function teamSet(id, changes, bases) {
 }
 function teamAddTask(fields) {
   const id = uid();
-  teamSet(id, { title: fields.title, prio: fields.prio || 'medium', done: false, assignee: fields.assignee || null, createdBy: meId(), created: Date.now(), mail: fields.mail || null });
+  const as = fields.assignees || [];
+  teamSet(id, { kind: 'task', module: fields.module || 'main', title: fields.title, prio: fields.prio || 'medium', done: false, assignees: as, assignee: as[0] || null, createdBy: meId(), created: Date.now(), mail: fields.mail || null });
   return id;
 }
+const setAssignees = (id, list) => teamSet(id, { assignees: list, assignee: list[0] || null });
 
 /* ---------- synchroniseren ---------- */
 async function teamSync() {
@@ -3279,7 +3519,7 @@ function setTeamStatus(st, err) {
 }
 async function teamStart() {
   clearInterval(Team.timer);
-  Object.assign(Team, { dir: null, perm: false, meta: null, metaStamp: 0, key: null, kid: null, keys: {}, mine: null, others: new Map(), tasks: [], members: new Map(), locks: new Map(), firstMerge: true });
+  Object.assign(Team, { dir: null, perm: false, meta: null, metaStamp: 0, key: null, kid: null, keys: {}, mine: null, others: new Map(), tasks: [], notes: [], modules: [], records: new Map(), members: new Map(), locks: new Map(), firstMerge: true });
   if (!teamOn()) { Team.status = 'off'; return; }
   Team.dir = (await IDB.get('teamdir:' + S.team.id)) || null;
   if (!Team.dir) { setTeamStatus('perm', 'nodir'); return; }
@@ -3320,7 +3560,7 @@ async function teamReconnect() {
 function checkAssigned() {
   if (!S.team) return;
   const seen = new Set(S.team.seen || []);
-  const mine = Team.tasks.filter(t => t.assignee === meId() && !t.done);
+  const mine = Team.tasks.filter(t => t.assignees.includes(meId()) && !t.done);
   const fresh = mine.filter(t => !seen.has(t.id));
   const first = S.team.seenInit !== true;
   if (first) { S.team.seenInit = true; save(); }
@@ -3329,17 +3569,17 @@ function checkAssigned() {
   save();
   if (first) { toast(`Er staa${fresh.length === 1 ? 't 1 teamtaak' : 'n ' + fresh.length + ' teamtaken'} op jouw naam`); return; }
   for (const t of fresh) {
-    const from = t._f?.assignee?.by;
+    const from = t._f?.assignees?.by || t._f?.assignee?.by;
     if (from === meId()) continue; // zelf aan jezelf toegewezen
-    notifyAssigned(t, memberName(from));
+    notifyAssigned(t, memberName(from), t.assignees.length > 1 ? t.assignees.filter(x => x !== meId()).map(memberName) : []);
   }
 }
-function notifyAssigned(t, fromName) {
+function notifyAssigned(t, fromName, withOthers = []) {
   beep();
   try { if ('Notification' in window && Notification.permission === 'granted') new Notification('Streamline — nieuwe teamtaak', { body: `${fromName}: ${t.title}`, tag: 'team-' + t.id }); } catch (e) {}
   const box = h('div', { class: 'alarm', role: 'alert' });
   const close = () => box.remove();
-  box.append(h('h4', { html: icon('users', 18) + 'Nieuwe teamtaak' }), h('p', {}, h('b', {}, fromName), ' heeft je een taak gegeven:', h('br'), t.title),
+  box.append(h('h4', { html: icon('users', 18) + 'Nieuwe teamtaak' }), h('p', {}, h('b', {}, fromName), ' heeft je een taak gegeven', withOthers.length ? ` (samen met ${withOthers.join(', ')})` : '', ':', h('br'), t.title),
     h('div', { class: 'row' },
       h('button', { class: 'btn primary sm', onclick: () => { close(); openTeamTask(t.id); } }, 'Bekijken'),
       h('button', { class: 'btn sm', onclick: close }, 'OK')));
@@ -3356,22 +3596,37 @@ function avatarEl(id, size = 26) {
   if (m?.avatar) el.append(h('img', { src: m.avatar, alt: '' })); else el.textContent = name.trim().slice(0, 1).toUpperCase();
   return el;
 }
+function avatarStack(ids, size = 24, max = 3) {
+  const el = h('span', { class: 'avstack', title: ids.map(memberName).join(', ') });
+  ids.slice(0, max).forEach(id => el.append(avatarEl(id, size)));
+  if (ids.length > max) el.append(h('span', { class: 'av more', style: { width: size + 'px', height: size + 'px', fontSize: Math.round(size * .4) + 'px' } }, '+' + (ids.length - max)));
+  return el;
+}
 function membersList() {
   const list = [...Team.members.values()];
   if (Team.mine?.profile && !list.some(m => m.id === meId())) list.push(Team.mine.profile);
   return list.sort((a, b) => (a.id === meId() ? -1 : b.id === meId() ? 1 : String(a.name).localeCompare(b.name)));
 }
-function assigneePicker(anchor, current, cb) {
-  popover(anchor, [
-    h('div', { class: 'lbl', style: { padding: '4px 10px 6px' } }, 'Toewijzen aan'),
-    membersList().map(m => h('button', { class: 'opt' + (m.id === current ? ' cr-cur' : ''), onclick: () => { closePop(); cb(m.id); } }, avatarEl(m.id, 28), h('span', { class: 'grow' }, m.name + (m.id === meId() ? ' (jij)' : '')))),
-    current ? [h('hr'), h('button', { class: 'opt', html: icon('x', 15) + 'Niemand', onclick: () => { closePop(); cb(null); } })] : null,
-  ]);
+/* Meerdere personen kiezen: elke klik zet iemand aan of uit, het venster blijft open. */
+function assigneesPicker(anchor, current, cb) {
+  let sel = [...(current || [])];
+  const list = h('div');
+  const draw = () => {
+    list.innerHTML = '';
+    for (const m of membersList()) {
+      const on = sel.includes(m.id);
+      list.append(h('button', { class: 'opt' + (on ? ' cr-cur' : ''), onclick: () => { sel = on ? sel.filter(x => x !== m.id) : [...sel, m.id]; draw(); cb(sel); } },
+        avatarEl(m.id, 28), h('span', { class: 'grow' }, m.name + (m.id === meId() ? ' (jij)' : '')), h('span', { class: 'pick' + (on ? ' on' : ''), html: on ? icon('check', 14) : '' })));
+    }
+  };
+  draw();
+  popover(anchor, [h('div', { class: 'lbl', style: { padding: '4px 10px 6px' } }, 'Toewijzen aan (meerdere kan)'), list, h('hr'),
+    h('button', { class: 'opt', html: icon('check', 15) + 'Klaar', onclick: closePop })]);
 }
 const teamRefresh = debounce(() => {
   if (!S) return;
   for (const it of [...S.global, ...currentPage().items]) {
-    if (!['todo', 'teamtasks', 'teammembers'].includes(it.type)) continue;
+    if (!['todo', 'teamtasks', 'teammembers', 'teamnotes'].includes(it.type)) continue;
     const el = els.get(it.id); if (!el) continue;
     const a = document.activeElement;
     if (a && el.contains(a) && a.matches('[contenteditable="true"]')) { a.addEventListener('blur', () => teamRefresh(), { once: true }); continue; }
@@ -3391,6 +3646,12 @@ function teamStatusBox(el) {
   }[Team.status] || ['clock', 'Team laden…', '', null];
   el.append(h('div', { class: 'missing' }, h('span', { html: icon(msg[0], 26) }), h('b', {}, msg[1]), h('span', {}, msg[2]), msg[3] ? h('button', { class: 'btn primary sm', onclick: msg[4] }, msg[3]) : null));
 }
+function moduleOf(id) { return Team.modules.find(m => m.id === (id || 'main')); }
+function moduleGone(el, id) {
+  const r = Team.records.get(id);
+  el.append(h('div', { class: 'missing' }, h('span', { html: icon('trash', 24) }), h('b', {}, 'Deze gedeelde module is verwijderd'),
+    h('span', {}, r ? `${memberName(r._f?.deleted?.by)} heeft hem voor iedereen verwijderd. Je kunt deze widget weghalen via het tandwiel.` : 'Hij bestaat niet (meer) in dit team.')));
+}
 
 /* ---------- teamtaak openen / bewerken (met vergrendeling) ---------- */
 function setLock(id, on) {
@@ -3398,12 +3659,33 @@ function setLock(id, on) {
   if (on) Team.mine.locks[id] = Date.now() + LOCK_MS; else delete Team.mine.locks[id];
   writeMine();
 }
-async function downloadAttachment(a) {
-  try {
-    const bytes = new Uint8Array(await (await (await tGet('bijlagen/' + a.id + '.bin')).getFile()).arrayBuffer());
-    const key = Team.keys[a.kid]; if (!key) throw new Error('sleutel ontbreekt');
-    download(a.name, new Blob([await TC.dec(key, bytes)], { type: a.type || 'application/octet-stream' }));
-  } catch (e) { toast(e.name === 'NotFoundError' ? 'Bijlage nog niet binnen — OneDrive is waarschijnlijk nog aan het synchroniseren' : 'Bijlage openen mislukt: ' + e.message, 5000); }
+async function loadTeamFile(a) {
+  const bytes = new Uint8Array(await (await (await tGet('bijlagen/' + a.id + '.bin')).getFile()).arrayBuffer());
+  const key = Team.keys[a.kid]; if (!key) throw new Error('De sleutel voor deze bijlage ontbreekt');
+  return TC.dec(key, bytes);
+}
+async function inlineMap(mail) {
+  const map = {};
+  for (const i of mail.inline || []) { try { map[i.cid] = 'data:' + (i.type || 'image/png') + ';base64,' + B64.enc(await loadTeamFile(i)); } catch (e) {} }
+  return map;
+}
+function mailSection(mail) {
+  const atts = mail.attachments || [];
+  const view = h('div', { class: 'mailview' });
+  if (mail.html) {
+    view.append(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Mail laden…'));
+    inlineMap(mail).then(map => { view.innerHTML = ''; view.append(mailFrame(mail.html, map)); });
+  } else view.append(mail.body ? h('pre', { class: 'mailbody' }, mail.body) : h('div', { class: 'hint', style: { padding: '10px 0 0' } }, 'Alleen de titel is gedeeld.'));
+  return h('div', { class: 'sect', style: { marginTop: '14px' } }, h('h4', {}, 'E-mail'),
+    h('div', { class: 'mailbox' },
+      mail.from ? h('div', {}, h('span', { class: 'lbl' }, 'Van: '), mail.from) : null,
+      mail.date ? h('div', {}, h('span', { class: 'lbl' }, 'Datum: '), new Date(mail.date).toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' })) : null,
+      view),
+    atts.length ? h('div', { class: 'atts' },
+      h('span', { class: 'lbl', style: { width: '100%' } }, `${atts.length} bijlage${atts.length === 1 ? '' : 'n'} — klik om te bekijken`),
+      atts.map((a, i) => h('button', { class: 'att', title: 'Bekijken', onclick: () => openAttachmentViewer(atts, i, loadTeamFile) }, h('span', { html: icon(ICON_FOR(attType(a)), 16) }), h('span', { class: 'nm' }, a.name), h('span', { class: 'cr-info' }, fmtSize(a.size)))),
+      atts.length > 1 ? h('button', { class: 'btn sm', onclick: () => downloadAllAttachments(atts, loadTeamFile) }, h('span', { html: icon('download', 14) }), 'Alle bijlagen downloaden')
+        : h('button', { class: 'btn sm', onclick: async () => { try { download(atts[0].name, new Blob([await loadTeamFile(atts[0])], { type: attType(atts[0]) })); } catch (e) { toast('Downloaden mislukt: ' + e.message); } } }, h('span', { html: icon('download', 14) }), 'Downloaden')) : null);
 }
 function openTeamTask(id) {
   const t = Team.tasks.find(x => x.id === id);
@@ -3411,19 +3693,22 @@ function openTeamTask(id) {
   const lock = Team.locks.get(id);
   const ro = !!lock && lock.until > Date.now();
   const bases = Object.fromEntries(Object.entries(t._f).map(([k, f]) => [k, f.t]));
-  const draft = { title: t.title, prio: t.prio, assignee: t.assignee, done: !!t.done };
+  const draft = { title: t.title, prio: t.prio, assignees: [...t.assignees], done: !!t.done };
+  const FIELD = { title: 'de titel', prio: 'de prioriteit', assignees: 'de toewijzing', assignee: 'de toewijzing', done: 'de status' };
+  const showVal = c => c.field === 'assignees' ? (c.v || []).map(memberName).join(', ') || 'niemand' : c.field === 'assignee' ? memberName(c.v) : c.field === 'done' ? (c.v ? 'klaar' : 'open') : c.v;
   const body = h('div');
   if (ro) body.append(h('div', { class: 'list-row', style: { marginBottom: '12px' } }, h('span', { html: icon('lock', 16) }), h('span', {}, h('b', {}, memberName(lock.by)), ' is deze taak nu aan het bewerken. Je kunt hem bekijken; wijzigen kan zodra die klaar is.')));
-  if (t.conflicts.length) body.append(h('div', { class: 'list-row', style: { marginBottom: '12px', outline: '2px solid var(--mid)' } }, h('span', { html: icon('alert', 16), style: { color: 'var(--mid)' } }),
-    h('div', { class: 'grow' }, h('b', {}, 'Tegelijk gewijzigd. '), t.conflicts.map(c => `${memberName(c.by)} veranderde ${({ title: 'de titel', prio: 'de prioriteit', assignee: 'de toewijzing', done: 'de status' })[c.field] || c.field} naar “${c.field === 'assignee' ? memberName(c.v) : c.field === 'done' ? (c.v ? 'klaar' : 'open') : c.v}”`).join('; ') + '. De nieuwste wijziging is bewaard.'),
+  const conf = t.conflicts.filter(c => c.field !== 'assignee');
+  if (conf.length) body.append(h('div', { class: 'list-row', style: { marginBottom: '12px', outline: '2px solid var(--mid)' } }, h('span', { html: icon('alert', 16), style: { color: 'var(--mid)' } }),
+    h('div', { class: 'grow' }, h('b', {}, 'Tegelijk gewijzigd. '), conf.map(c => `${memberName(c.by)} veranderde ${FIELD[c.field] || c.field} naar “${showVal(c)}”`).join('; ') + '. De nieuwste wijziging is bewaard.'),
     ro ? null : h('button', { class: 'btn sm', onclick: () => { const ack = { ...(t.ack || {}) }; t.conflicts.forEach(c => ack[c.field + ':' + c.t] = 1); teamSet(id, { ack }); m.close(); } }, 'Begrepen')));
   const title = h('input', { class: 'inp', value: draft.title, disabled: ro, oninput: e => draft.title = e.target.value });
   const prio = h('div', { class: 'seg' });
   const drawPrio = () => { prio.innerHTML = ''; for (const p of ['hoog', 'medium', 'laag']) prio.append(h('button', { class: draft.prio === p ? 'on' : '', disabled: ro, onclick: () => { draft.prio = p; drawPrio(); } }, h('i', { class: 'pc-' + p, style: { width: '9px', height: '9px', borderRadius: '50%', display: 'inline-block', marginRight: '6px' } }), PRIO_LABEL[p])); };
   drawPrio();
   const asg = h('button', { class: 'btn', disabled: ro });
-  const drawAsg = () => { asg.innerHTML = ''; asg.append(draft.assignee ? avatarEl(draft.assignee, 22) : h('span', { html: icon('user', 16) }), draft.assignee ? memberName(draft.assignee) : 'Niemand'); };
-  asg.onclick = () => assigneePicker(asg, draft.assignee, v => { draft.assignee = v; drawAsg(); });
+  const drawAsg = () => { asg.innerHTML = ''; if (draft.assignees.length) asg.append(avatarStack(draft.assignees, 22, 4), draft.assignees.length === 1 ? memberName(draft.assignees[0]) : `${draft.assignees.length} personen`); else asg.append(h('span', { html: icon('user', 16) }), 'Niemand'); };
+  asg.onclick = () => assigneesPicker(asg, draft.assignees, v => { draft.assignees = v; drawAsg(); });
   drawAsg();
   body.append(
     h('div', { class: 'field' }, h('label', {}, 'Taak'), title),
@@ -3432,15 +3717,7 @@ function openTeamTask(id) {
       h('div', { class: 'field' }, h('label', {}, 'Toegewezen aan'), asg),
       h('label', { class: 'check', style: { marginBottom: '16px' } }, h('input', { type: 'checkbox', checked: draft.done, disabled: ro, onchange: e => draft.done = e.target.checked }), 'Klaar')),
     h('div', { class: 'hint' }, `Aangemaakt door ${memberName(t.createdBy)} op ${new Date(t.created).toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' })}`));
-  if (t.mail) {
-    const mail = t.mail;
-    body.append(h('div', { class: 'sect', style: { marginTop: '14px' } }, h('h4', {}, 'E-mail'),
-      h('div', { class: 'mailbox' },
-        mail.from ? h('div', {}, h('span', { class: 'lbl' }, 'Van: '), mail.from) : null,
-        mail.date ? h('div', {}, h('span', { class: 'lbl' }, 'Datum: '), new Date(mail.date).toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' })) : null,
-        mail.body ? h('pre', { class: 'mailbody' }, mail.body) : h('div', { class: 'hint' }, 'Alleen de titel is gedeeld.')),
-      (mail.attachments || []).length ? h('div', { class: 'atts' }, mail.attachments.map(a => h('button', { class: 'btn sm', title: 'Downloaden', onclick: () => downloadAttachment(a) }, h('span', { html: icon('download', 14) }), a.name, h('span', { class: 'cr-info' }, ' ' + fmtSize(a.size))))) : null));
-  }
+  if (t.mail) body.append(mailSection(t.mail));
   let lockTimer = null;
   if (!ro) { setLock(id, true); lockTimer = setInterval(() => setLock(id, true), 30000); }
   const m = openModal({ title: 'Teamtaak', wide: !!t.mail, body,
@@ -3457,6 +3734,7 @@ function openTeamTask(id) {
         const changes = {};
         for (const k of Object.keys(draft)) if (JSON.stringify(draft[k] ?? null) !== JSON.stringify(t[k] ?? null)) changes[k] = draft[k];
         if (!Object.keys(changes).length) return m.close();
+        if ('assignees' in changes) changes.assignee = draft.assignees[0] || null;
         // fail-safe: heeft iemand dit intussen gewijzigd?
         const clash = Object.keys(changes).filter(k => now._f[k] && now._f[k].t > (bases[k] || 0) && now._f[k].by !== meId());
         if (clash.length) {
@@ -3466,7 +3744,8 @@ function openTeamTask(id) {
           for (const k of clash) bases[k] = now._f[k].t;
         }
         teamSet(id, changes, bases); m.close();
-        if ('assignee' in changes && changes.assignee && changes.assignee !== meId()) toast('Toegewezen aan ' + memberName(changes.assignee));
+        const added = (changes.assignees || []).filter(x => x !== meId() && !t.assignees.includes(x));
+        if (added.length) toast('Toegewezen aan ' + added.map(memberName).join(', '));
       } }, 'Opslaan')],
     onClose: () => { clearInterval(lockTimer); if (!ro) setLock(id, false); } });
 }
@@ -3501,21 +3780,91 @@ async function shareChoice(n) {
       onClose: () => { if (!done) res(null); } });
   });
 }
+async function storeTeamFile(a, extra = {}) {
+  const id = uid() + uid();
+  await tWrite('bijlagen/' + id + '.bin', await TC.enc(Team.key, a.data));
+  return { id, name: a.name, type: a.type || MailParser.guessType(a.name), size: a.data.length, kid: Team.kid, ...extra };
+}
 async function storeMail(mail) {
-  const atts = [];
-  for (const a of mail.attachments || []) {
-    const id = uid() + uid();
-    await tWrite('bijlagen/' + id + '.bin', await TC.enc(Team.key, a.data));
-    atts.push({ id, name: a.name, type: a.type || '', size: a.data.length, kid: Team.kid });
+  const attachments = [], inline = [];
+  for (const a of mail.attachments || []) attachments.push(await storeTeamFile(a));
+  let html = (mail.html || '').replace(/<!--(?!\[if)[\s\S]*?-->/g, '');
+  if (html.length > 600000) html = ''; // extreem grote opmaak: dan alleen de tekst bewaren
+  if (html) for (const i of mail.inline || []) inline.push(await storeTeamFile(i, { cid: i.cid }));
+  return { from: mail.from || '', date: mail.date || '', body: (mail.body || '').slice(0, 100000), html, inline, attachments };
+}
+
+/* ---------- gedeelde modules (takenlijsten en notities) ---------- */
+const MODULE_TYPES = { teamtasks: ['Takenlijst', 'checksquare'], teamnotes: ['Teamnotities', 'note'] };
+function moduleCount(m) { return m.type === 'teamnotes' ? Team.notes.filter(n => n.module === m.id).length : Team.tasks.filter(t => t.module === m.id).length; }
+function placedModules() {
+  const ids = new Set();
+  for (const it of allItems()) if (MODULE_TYPES[it.type]) ids.add(it.config.moduleId || (it.type === 'teamtasks' ? 'main' : ''));
+  return ids;
+}
+function unplacedModules() { const placed = placedModules(); return Team.status === 'ok' ? Team.modules.filter(m => !placed.has(m.id) && moduleCount(m) > 0) : []; }
+async function newModule(type, cfg) {
+  if (Team.status !== 'ok') { toast('Sluit je eerst aan bij een team (Instellingen → Team)'); return null; }
+  const title = await ask('Nieuwe gedeelde module', 'Naam (zichtbaar voor het hele team)', MODULE_TYPES[type][0]);
+  if (!title) return null;
+  const id = uid();
+  teamSet(id, { kind: 'module', type, title, createdBy: meId(), created: Date.now() });
+  return { ...cfg, moduleId: id, title };
+}
+function placeModule(m) {
+  if (!currentPage().team) { const tp = S.pages.find(p => p.team); if (tp && S.activePage !== tp.id) goPage(tp.id); }
+  addItem(m.type, { moduleId: m.id, title: m.title });
+  S.team.prompted = [...new Set([...(S.team.prompted || []), m.id])]; save();
+  toast('“' + m.title + '” staat nu op je tabblad');
+}
+let promptBox = null;
+function checkModulePrompt() {
+  if (!S?.team || Team.status !== 'ok' || !currentPage().team) { promptBox?.remove(); promptBox = null; return; }
+  const skip = new Set([...(S.team.dismissed || []), ...(S.team.prompted || [])]);
+  const m = unplacedModules().find(x => !skip.has(x.id) && x.createdBy !== meId() && !x.virtual);
+  if (!m) { promptBox?.remove(); promptBox = null; return; }
+  if (promptBox?.dataset.id === m.id) return;
+  promptBox?.remove();
+  const n = moduleCount(m), [label, ic] = MODULE_TYPES[m.type];
+  promptBox = h('div', { class: 'modprompt', 'data-id': m.id, role: 'dialog' },
+    avatarEl(m.createdBy, 40),
+    h('div', { class: 'grow' }, h('b', {}, memberName(m.createdBy) + ' heeft inhoud toegevoegd'),
+      h('div', {}, h('span', { html: icon(ic, 14), style: { display: 'inline-block', verticalAlign: '-2px', marginRight: '5px' } }), `${label}: “${m.title}” · ${n} ${m.type === 'teamnotes' ? (n === 1 ? 'notitie' : 'notities') : (n === 1 ? 'taak' : 'taken')}`),
+      h('div', { class: 'hint', style: { margin: '2px 0 0' } }, 'Wil je deze module ook op je team-tabblad zetten?')),
+    h('div', { class: 'row' },
+      h('button', { class: 'btn sm', onclick: () => { S.team.dismissed = [...new Set([...(S.team.dismissed || []), m.id])]; save(); promptBox.remove(); promptBox = null; toast('Je vindt hem later terug bovenaan het widgetpaneel (tandwiel)', 4500); checkModulePrompt(); } }, 'Nee'),
+      h('button', { class: 'btn primary sm', onclick: () => { promptBox.remove(); promptBox = null; placeModule(m); checkModulePrompt(); } }, 'Toevoegen')));
+  document.body.append(promptBox);
+}
+/* bovenaan het widgetpaneel: "[naam] heeft inhoud toegevoegd" */
+function teamRepoGroups(q) {
+  const out = [];
+  const byCreator = new Map();
+  for (const m of unplacedModules()) {
+    const [label] = MODULE_TYPES[m.type];
+    if (q && !(m.title + ' ' + label + ' ' + memberName(m.createdBy)).toLowerCase().includes(q)) continue;
+    (byCreator.get(m.createdBy) || byCreator.set(m.createdBy, []).get(m.createdBy)).push(m);
   }
-  return { from: mail.from || '', date: mail.date || '', body: (mail.body || '').slice(0, 100000), attachments: atts };
+  for (const [creator, mods] of byCreator) {
+    const grp = h('div', { class: 'repo-group team-shared' }, h('h4', {}, creator === meId() ? 'Jij hebt inhoud toegevoegd' : memberName(creator) + ' heeft inhoud toegevoegd'));
+    for (const m of mods) {
+      const [label, ic] = MODULE_TYPES[m.type], n = moduleCount(m);
+      grp.append(h('button', { class: 'repo-item', onclick: () => { placeModule(m); renderRepo(); } },
+        h('span', { class: 'ri', html: icon(ic, 20) }),
+        h('span', {}, h('b', {}, m.title), h('small', {}, `${label} · ${n} ${m.type === 'teamnotes' ? (n === 1 ? 'notitie' : 'notities') : (n === 1 ? 'taak' : 'taken')} · gedeeld`)),
+        avatarEl(creator, 26)));
+    }
+    out.push(grp);
+  }
+  return out;
 }
 
 /* ---------- widgets ---------- */
 reg({
   type: 'teamtasks', name: 'Teamtaken', desc: 'Gedeelde takenlijst: toewijzen aan collega’s, e-mails erin slepen', icon: 'users', group: 'widgets',
   size: { w: 9, h: 11 }, min: { w: 4, h: 5 },
-  defaults: { title: 'Teamtaken', filter: 'all', showDone: true, defaultPrio: 'medium' },
+  defaults: { title: 'Teamtaken', filter: 'all', showDone: true, defaultPrio: 'medium', moduleId: '' },
+  beforeAdd: cfg => cfg.moduleId ? cfg : newModule('teamtasks', cfg),
   fields: [
     { key: 'title', label: 'Kop', type: 'text' },
     { key: 'filter', label: 'Standaard tonen', type: 'seg', options: [['all', 'Alles'], ['mine', 'Aan mij'], ['open', 'Niet toegewezen']] },
@@ -3524,42 +3873,45 @@ reg({
   ],
   render(el, ctx) {
     if (Team.status !== 'ok') return teamStatusBox(el);
-    const c = ctx.config, d = ctx.item.data;
+    const c = ctx.config, d = ctx.item.data, mod = c.moduleId || 'main';
+    if (!moduleOf(mod)) return moduleGone(el, mod);
     d.filter = d.filter || c.filter || 'all';
-    let prio = c.defaultPrio || 'medium', assignee = null;
+    let prio = c.defaultPrio || 'medium', assignees = [];
     const inp = h('input', { class: 'inp grow', placeholder: 'Nieuwe teamtaak… (of sleep een e-mail hierheen)' });
     const pr = h('div', { class: 'prio', title: 'Prioriteit' });
     const drawPr = () => { pr.innerHTML = ''; for (const p of ['hoog', 'medium', 'laag']) pr.append(h('button', { class: prio === p ? 'on' : '', title: PRIO_LABEL[p], onclick: () => { prio = p; drawPr(); } }, h('i', { class: 'pc-' + p }))); };
     drawPr();
-    const asg = h('button', { class: 'iconbtn', title: 'Toewijzen aan…' });
-    const drawAsg = () => { asg.innerHTML = ''; asg.append(assignee ? avatarEl(assignee, 26) : h('span', { html: icon('user', 16) })); asg.title = assignee ? 'Toewijzen aan ' + memberName(assignee) : 'Toewijzen aan…'; };
-    asg.onclick = () => assigneePicker(asg, assignee, v => { assignee = v; drawAsg(); });
+    const asg = h('button', { class: 'iconbtn asg', title: 'Toewijzen aan…' });
+    const drawAsg = () => { asg.innerHTML = ''; asg.append(assignees.length ? avatarStack(assignees, 24, 2) : h('span', { html: icon('user', 16) })); asg.title = assignees.length ? 'Toewijzen aan ' + assignees.map(memberName).join(', ') : 'Toewijzen aan…'; };
+    asg.onclick = () => assigneesPicker(asg, assignees, v => { assignees = v; drawAsg(); });
     drawAsg();
-    const add = () => { const v = inp.value.trim(); if (!v) return; teamAddTask({ title: v, prio, assignee }); inp.value = ''; inp.focus(); };
+    const add = () => { const v = inp.value.trim(); if (!v) return; teamAddTask({ title: v, prio, assignees, module: mod }); inp.value = ''; inp.focus(); };
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
     const tabs = h('div', { class: 'seg', style: { marginBottom: '8px' } });
     for (const [k, l] of [['all', 'Alles'], ['mine', 'Aan mij'], ['open', 'Niet toegewezen']]) tabs.append(h('button', { class: d.filter === k ? 'on' : '', onclick: () => { d.filter = k; ctx.save(); ctx.rerender(); } }, l));
     const list = h('div', { class: 'todo-list' });
-    const items = Team.tasks.filter(t => (c.showDone !== false || !t.done) && (d.filter === 'all' || (d.filter === 'mine' ? t.assignee === meId() : !t.assignee)))
+    const mine = Team.tasks.filter(t => t.module === mod);
+    const items = mine.filter(t => (c.showDone !== false || !t.done) && (d.filter === 'all' || (d.filter === 'mine' ? t.assignees.includes(meId()) : !t.assignees.length)))
       .sort((a, b) => (!!a.done - !!b.done) || (PRIO[a.prio] - PRIO[b.prio]) || (a.created - b.created));
     for (const t of items) {
       const lock = Team.locks.get(t.id);
-      const av = h('button', { class: 'mini av-btn', title: t.assignee ? 'Toegewezen aan ' + memberName(t.assignee) : 'Toewijzen' });
-      av.append(t.assignee ? avatarEl(t.assignee, 24) : h('span', { html: icon('user', 15) }));
-      av.onclick = e => { e.stopPropagation(); if (lock) return toast(memberName(lock.by) + ' is deze taak aan het bewerken'); assigneePicker(av, t.assignee, v => teamSet(t.id, { assignee: v })); };
+      const av = h('button', { class: 'mini av-btn', title: t.assignees.length ? 'Toegewezen aan ' + t.assignees.map(memberName).join(', ') : 'Toewijzen' });
+      av.append(t.assignees.length ? avatarStack(t.assignees, 24, 3) : h('span', { html: icon('user', 15) }));
+      av.onclick = e => { e.stopPropagation(); if (lock) return toast(memberName(lock.by) + ' is deze taak aan het bewerken'); assigneesPicker(av, t.assignees, v => setAssignees(t.id, v)); };
+      const nAtt = (t.mail?.attachments || []).length;
       list.append(h('div', { class: 'todo' + (t.done ? ' done' : '') },
         h('span', { class: 'bar pc-' + (t.prio || 'medium') }),
         h('button', { class: 'cb', title: t.done ? 'Niet klaar' : 'Klaar', html: icon('check', 13), onclick: () => { if (lock) return toast(memberName(lock.by) + ' is deze taak aan het bewerken'); teamSet(t.id, { done: !t.done }); } }),
         h('div', { class: 'tt clickable', title: 'Openen', onclick: () => openTeamTask(t.id) }, t.title),
-        t.mail ? h('span', { class: 'meta', title: 'Met e-mail' + ((t.mail.attachments || []).length ? ' en bijlagen' : ''), html: icon((t.mail.attachments || []).length ? 'file' : 'mail', 14) }) : '',
-        t.conflicts.length ? h('span', { class: 'meta warn', title: 'Tegelijk gewijzigd — open de taak', html: icon('alert', 14) }) : '',
+        t.mail ? h('span', { class: 'meta', title: 'Met e-mail' + (nAtt ? ` en ${nAtt} bijlage${nAtt === 1 ? '' : 'n'}` : '') }, h('span', { html: icon(nAtt ? 'file' : 'mail', 14), style: { display: 'inline-block', verticalAlign: '-2px' } }), nAtt > 1 ? ' ' + nAtt : '') : '',
+        t.conflicts.filter(x => x.field !== 'assignee').length ? h('span', { class: 'meta warn', title: 'Tegelijk gewijzigd — open de taak', html: icon('alert', 14) }) : '',
         lock ? h('span', { class: 'lockb', title: memberName(lock.by) + ' bewerkt deze taak' }, h('span', { html: icon('lock', 12) }), memberName(lock.by)) : '',
         av));
     }
     if (!items.length) list.append(h('div', { class: 'empty' }, d.filter === 'mine' ? 'Er staan geen taken op jouw naam.' : 'Nog geen teamtaken. Typ hierboven of sleep een e-mail hierheen.'));
-    const open = Team.tasks.filter(t => !t.done).length;
+    const open = mine.filter(t => !t.done).length;
     el.append(h('div', { class: 'todo-add' }, inp, pr, asg, h('button', { class: 'iconbtn', title: 'Toevoegen', html: icon('plus', 16), onclick: add })), tabs, list,
-      h('div', { class: 'todo-foot' }, h('span', {}, `${open} open`), h('span', { class: 'sync', title: 'Wijzigingen worden direct in de teammap opgeslagen' }, h('span', { html: icon('refresh', 12) }), 'live')));
+      h('div', { class: 'todo-foot' }, h('span', {}, `${open} open`), h('span', { class: 'sync', title: 'Gedeeld met het team; wijzigingen worden direct opgeslagen' }, h('span', { html: icon('users', 12) }), 'gedeeld · live')));
     const card = el.closest('.card') || el;
     card.addEventListener('dragover', e => { if (editing) return; e.preventDefault(); e.stopPropagation(); card.classList.add('dropping'); });
     card.addEventListener('dragleave', e => { if (!card.contains(e.relatedTarget)) card.classList.remove('dropping'); });
@@ -3573,10 +3925,65 @@ reg({
       for (const g of got) {
         let mail = null;
         if (share && g.mail) { try { mail = await storeMail(g.mail); } catch (err) { toast('Bijlagen opslaan mislukt: ' + err.message, 5000); } }
-        teamAddTask({ title: g.title, prio, assignee, mail });
+        teamAddTask({ title: g.title, prio, assignees, mail, module: mod });
       }
       toast(got.length === 1 ? 'Teamtaak toegevoegd: ' + got[0].title : got.length + ' teamtaken toegevoegd');
     });
+  },
+});
+
+/* ---------- gedeelde notities ---------- */
+const noteSaveTimers = new Map();
+let focusNoteId = null;
+reg({
+  type: 'teamnotes', name: 'Teamnotities', desc: 'Notities die het hele team ziet en kan bewerken', icon: 'note', group: 'widgets',
+  size: { w: 7, h: 9 }, min: { w: 3, h: 3 },
+  defaults: { title: 'Teamnotities', newOnTop: true, moduleId: '' },
+  beforeAdd: cfg => cfg.moduleId ? cfg : newModule('teamnotes', cfg),
+  fields: [{ key: 'title', label: 'Kop', type: 'text' }, { key: 'newOnTop', label: 'Nieuwe notities bovenaan', type: 'checkbox' }],
+  render(el, ctx) {
+    if (Team.status !== 'ok') return teamStatusBox(el);
+    const c = ctx.config, mod = c.moduleId, d = ctx.item.data; d.rem = d.rem || {};
+    if (!mod || !moduleOf(mod)) return moduleGone(el, mod);
+    const notes = Team.notes.filter(n => n.module === mod).sort((a, b) => c.newOnTop !== false ? b.created - a.created : a.created - b.created);
+    const wrap = h('div', { class: 'notes' });
+    for (const n of notes) {
+      const lock = Team.locks.get(n.id);
+      const ro = !!lock && lock.until > Date.now();
+      const ed = h('div', { class: 'ne', contenteditable: ro ? 'false' : 'true', 'data-ph': 'Schrijf een notitie voor het team…', html: sanitize(n.html || '') });
+      let lockTimer = null;
+      const flushNote = () => { clearTimeout(noteSaveTimers.get(n.id)); noteSaveTimers.delete(n.id); const v = sanitize(ed.innerHTML); if (v !== (Team.records.get(n.id)?.html || '')) teamSet(n.id, { html: v, editedBy: meId(), edited: Date.now() }); };
+      ed.addEventListener('focus', () => { setLock(n.id, true); lockTimer = setInterval(() => setLock(n.id, true), 30000); });
+      ed.addEventListener('blur', () => { clearInterval(lockTimer); flushNote(); setLock(n.id, false); });
+      ed.addEventListener('input', () => { clearTimeout(noteSaveTimers.get(n.id)); noteSaveTimers.set(n.id, setTimeout(flushNote, 700)); });
+      ed.addEventListener('paste', e => { e.preventDefault(); const html = e.clipboardData.getData('text/html'); if (html) document.execCommand('insertHTML', false, sanitize(html)); else document.execCommand('insertText', false, e.clipboardData.getData('text/plain')); });
+      ed.addEventListener('click', e => {
+        const a = e.target.closest('a'); if (a && (e.ctrlKey || e.metaKey)) { e.preventDefault(); openUrl(a.href); return; }
+        const li = e.target.closest('ul.chk > li'); if (li && e.offsetX < 22 && !ro) { li.classList.toggle('ok'); ed.dispatchEvent(new Event('input')); }
+      });
+      const tb = h('div', { class: 'nt' }, NOTE_TOOLS.map(([ic, t, fn]) => h('button', { title: t, html: icon(ic, 15), onmousedown: e => e.preventDefault(), onclick: async () => { ed.focus(); await fn(); ed.dispatchEvent(new Event('input')); } })));
+      const r = d.rem[n.id];
+      const bell = h('button', { class: 'mini' + (r?.remindAt && !r.reminded ? ' on' : ''), title: 'Persoonlijke herinnering (alleen voor jou)', html: icon('bell', 15) });
+      bell.onclick = () => ctx.remind(bell, r?.remindAt, ts => { if (ts) d.rem[n.id] = { id: n.id, remindAt: ts, reminded: false }; else delete d.rem[n.id]; ctx.save(); ctx.rerender(); });
+      const who = n.editedBy && n.editedBy !== n.createdBy ? `${memberName(n.createdBy)} · bewerkt door ${memberName(n.editedBy)}` : memberName(n.createdBy);
+      wrap.append(h('div', { class: 'note team' + (r?.remindAt && !r.reminded ? ' due' : '') + (ro ? ' locked' : '') }, ro ? '' : tb, ed,
+        h('div', { class: 'nf' },
+          avatarEl(n.editedBy || n.createdBy, 18),
+          h('span', { class: 'when' }, `${who} · ${timeAgo(n.edited || n.created)}`),
+          ro ? h('span', { class: 'lockb' }, h('span', { html: icon('lock', 12) }), memberName(lock.by) + ' typt…') : '',
+          n.conflicts.length ? h('span', { class: 'meta warn', title: 'Tegelijk bewerkt door ' + [...new Set(n.conflicts.map(x => memberName(x.by)))].join(', ') + '. De nieuwste versie is bewaard.', html: icon('alert', 14) }) : '',
+          r?.remindAt && !r.reminded ? h('span', { class: 'rem', html: icon('bell', 12) + fmtWhen(r.remindAt) }) : '',
+          bell,
+          ro ? '' : h('button', { class: 'mini', title: 'Notitie voor iedereen verwijderen', html: icon('trash', 15), onclick: async () => {
+            if (!(await confirmDlg('Notitie verwijderen?', 'De notitie verdwijnt voor het hele team.', 'Verwijderen', true))) return;
+            teamSet(n.id, { deleted: true }); delete d.rem[n.id]; ctx.save();
+          } }))));
+      if (focusNoteId === n.id) { focusNoteId = null; setTimeout(() => ed.focus(), 30); }
+    }
+    if (!notes.length) wrap.append(h('div', { class: 'empty' }, 'Nog geen teamnotities. Wat je hier schrijft, ziet het hele team.'));
+    el.append(wrap, h('div', { class: 'row', style: { paddingTop: '8px', justifyContent: 'space-between' } },
+      h('button', { class: 'btn sm', onclick: () => { const id = uid(); focusNoteId = id; teamSet(id, { kind: 'note', module: mod, html: '', createdBy: meId(), created: Date.now() }); } }, h('span', { html: icon('plus', 14) }), 'Notitie'),
+      h('span', { class: 'todo-foot', style: { padding: 0 } }, h('span', { class: 'sync' }, h('span', { html: icon('users', 12) }), 'gedeeld · live'))));
   },
 });
 reg({
@@ -3588,7 +3995,7 @@ reg({
     if (Team.status !== 'ok') return teamStatusBox(el);
     const wrap = h('div', { class: 'members' });
     for (const m of membersList()) {
-      const open = Team.tasks.filter(t => t.assignee === m.id && !t.done).length;
+      const open = Team.tasks.filter(t => t.assignees.includes(m.id) && !t.done).length;
       const ago = m.id === meId() ? 'jij' : m.updated ? 'actief ' + timeAgo(m.updated) : '';
       wrap.append(h('button', { class: 'member', title: m.id === meId() ? 'Je profiel aanpassen' : m.name, onclick: () => { if (m.id === meId()) profileDialog(); } },
         avatarEl(m.id, 38), h('span', { class: 'grow' }, h('b', {}, m.name), h('small', {}, [ago, open ? `${open} open` : ''].filter(Boolean).join(' · ')))));
@@ -3603,7 +4010,7 @@ function timeAgo(ts) {
 
 /* ---------- persoonlijke takenlijst: teamtaken erbij ---------- */
 const TeamForTodo = {
-  mine: () => (Team.status === 'ok' ? Team.tasks.filter(t => t.assignee === meId()) : []),
+  mine: () => (Team.status === 'ok' ? Team.tasks.filter(t => t.assignees.includes(meId())) : []),
   open: id => openTeamTask(id),
   toggle: t => teamSet(t.id, { done: !t.done }),
 };
@@ -3650,7 +4057,7 @@ function teamPage(add) {
   if (!p && add) {
     p = { id: uid(), name: 'Team', icon: 'users', team: true, items: [
       mk('title', 0, 3, 10, 1, { text: S.team.name, size: 3 }),
-      mk('teamtasks', 0, 4, 10, 11), mk('teammembers', 10, 4, 5, 6) ] };
+      mk('teamtasks', 0, 4, 10, 11, { moduleId: 'main' }), mk('teammembers', 10, 4, 5, 6) ] };
     const i = S.pages.findIndex(x => x.id === S.activePage);
     S.pages.splice(i + 1, 0, p);
   }
@@ -3806,6 +4213,20 @@ function tabTeam(b) {
     b.append(sect('Jouw profiel', h('button', { class: 'member', onclick: profileDialog }, avatarEl(meId(), 38), h('span', { class: 'grow' }, h('b', {}, memberName(meId())), h('small', {}, 'Naam en foto aanpassen')), h('span', { html: icon('pencil', 15) }))));
     b.append(sect('Leden', h('div', { class: 'members' }, membersList().map(m => h('div', { class: 'member' }, avatarEl(m.id, 30), h('span', { class: 'grow' }, h('b', {}, m.name + (m.id === meId() ? ' (jij)' : '')), h('small', {}, m.id === Team.meta?.creator ? 'maker van het team' : '')))))));
   }
+  if (Team.status === 'ok') {
+    const placed = placedModules();
+    const canDelete = m => !m.virtual && (m.createdBy === meId() || Team.meta?.creator === meId());
+    b.append(sect('Gedeelde modules',
+      h('p', { class: 'hint' }, 'Takenlijsten en notities die met het hele team gedeeld zijn. Een nieuwe maak je door in het widgetpaneel “Teamtaken” of “Teamnotities” toe te voegen.'),
+      Team.modules.map(m => { const [label, ic] = MODULE_TYPES[m.type] || ['Module', 'grid']; const n = moduleCount(m);
+        return h('div', { class: 'list-row' }, h('span', { html: icon(ic, 16) }),
+          h('div', { class: 'grow' }, h('b', {}, m.title), h('div', { class: 'hint', style: { margin: 0 } }, `${label} · ${n} ${m.type === 'teamnotes' ? 'notities' : 'taken'} · door ${memberName(m.createdBy)}`)),
+          placed.has(m.id) ? h('span', { class: 'badge' }, 'op je tabblad') : h('button', { class: 'btn sm', onclick: () => { placeModule(m); renderSettings(); } }, 'Toevoegen'),
+          canDelete(m) ? ib('trash', 'Voor iedereen verwijderen', async () => {
+            if (!(await confirmDlg('Module voor iedereen verwijderen?', `“${m.title}” en alles erin verdwijnt bij het hele team.`, 'Verwijderen', true))) return;
+            teamSet(m.id, { deleted: true }); renderSettings();
+          }, 'mini') : null); })));
+  }
   b.append(sect('E-mails in teamtaken',
     h('div', { class: 'field' }, h('label', {}, 'Inhoud en bijlagen van gesleepte e-mails delen'), segCtl([['ask', 'Elke keer vragen'], ['on', 'Standaard aan'], ['off', 'Standaard uit']], S.team.shareMail || 'ask', v => { S.team.shareMail = v; save(); }))));
   const page = S.pages.find(x => x.team);
@@ -3816,6 +4237,231 @@ function tabTeam(b) {
       h('button', { class: 'btn sm', onclick: () => teamInviteInfo(S.team.folder || 'Streamline team') }, 'Collega’s uitnodigen'),
       h('button', { class: 'btn sm danger', onclick: teamLeave }, 'Team verlaten')),
     h('p', { class: 'hint' }, 'De indeling van het team-tabblad is persoonlijk en staat in je eigen instellingenbestand. De taken zelf zijn voor het hele team.')));
+}
+
+/* ==========================================================================
+   Streamline — mails en bijlagen bekijken
+   - Mail-HTML wordt opgeschoond en in een afgeschermd venster (iframe zonder scripts) getoond.
+   - Afbeeldingen uit de mail zelf (cid:) worden getoond; afbeeldingen van internet worden
+     standaard geblokkeerd (privacy: geen 'leesbevestiging' via verborgen plaatjes).
+   - Bijlagen bekijken in een pop-up; Word/Excel/PowerPoint worden lokaal uitgelezen.
+   ========================================================================== */
+
+/* ---------- zip lezen (voor .docx/.xlsx/.pptx) ---------- */
+async function unzip(bytes) {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let eocd = -1;
+  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('geen zip');
+  const n = dv.getUint16(eocd + 10, true); let p = dv.getUint32(eocd + 16, true);
+  const files = {};
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(bytes.subarray(p + 46, p + 46 + nl));
+    files[name] = { method, csize, off };
+    p += 46 + nl + xl + cl;
+  }
+  return {
+    names: Object.keys(files),
+    async read(name) {
+      const f = files[name]; if (!f) return null;
+      const lnl = dv.getUint16(f.off + 26, true), lxl = dv.getUint16(f.off + 28, true);
+      const data = bytes.subarray(f.off + 30 + lnl + lxl, f.off + 30 + lnl + lxl + f.csize);
+      if (f.method === 0) return data;
+      const ds = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      return new Uint8Array(await new Response(ds).arrayBuffer());
+    },
+    async text(name) { const b = await this.read(name); return b ? new TextDecoder().decode(b) : null; },
+  };
+}
+const xmlDoc = s => new DOMParser().parseFromString(s, 'application/xml');
+const byTag = (node, tag) => [...node.getElementsByTagName(tag)];
+async function docxPreview(bytes) {
+  const z = await unzip(bytes); const doc = xmlDoc(await z.text('word/document.xml'));
+  const box = h('div', { class: 'docprev' });
+  const body = byTag(doc, 'w:body')[0]; if (!body) throw new Error('leeg');
+  const para = p => {
+    const style = byTag(p, 'w:pStyle')[0]?.getAttribute('w:val') || '';
+    const el = h(/^(Heading|Kop)\s?1|Title|Titel/i.test(style) ? 'h2' : /^(Heading|Kop)\s?[2-3]/i.test(style) ? 'h3' : byTag(p, 'w:numPr').length ? 'li' : 'p');
+    for (const r of byTag(p, 'w:r')) {
+      const t = byTag(r, 'w:t').map(x => x.textContent).join('') + (byTag(r, 'w:tab').length ? '\t' : '') + (byTag(r, 'w:br').length ? '\n' : '');
+      if (!t) continue;
+      let node = document.createTextNode(t);
+      if (byTag(r, 'w:b').length) node = h('b', {}, node);
+      if (byTag(r, 'w:i').length) node = h('i', {}, node);
+      el.append(node);
+    }
+    return el;
+  };
+  for (const c of body.children) {
+    if (c.tagName === 'w:p') box.append(para(c));
+    else if (c.tagName === 'w:tbl') box.append(h('table', {}, byTag(c, 'w:tr').map(tr => h('tr', {}, byTag(tr, 'w:tc').map(tc => h('td', {}, byTag(tc, 'w:p').map(para)))))));
+  }
+  return box;
+}
+async function xlsxPreview(bytes) {
+  const z = await unzip(bytes);
+  const ss = await z.text('xl/sharedStrings.xml');
+  const strings = ss ? byTag(xmlDoc(ss), 'si').map(si => byTag(si, 't').map(t => t.textContent).join('')) : [];
+  const wb = xmlDoc(await z.text('xl/workbook.xml'));
+  const sheets = byTag(wb, 'sheet').map((s, i) => ({ name: s.getAttribute('name'), file: `xl/worksheets/sheet${i + 1}.xml` }));
+  const box = h('div', { class: 'docprev' });
+  const tabs = h('div', { class: 'seg', style: { marginBottom: '10px' } });
+  const area = h('div', { class: 'xlwrap' });
+  const show = async i => {
+    $$('button', tabs).forEach((b, j) => b.classList.toggle('on', i === j));
+    const x = await z.text(sheets[i].file); area.innerHTML = '';
+    if (!x) return area.append(h('div', { class: 'hint' }, 'Leeg werkblad'));
+    const rows = byTag(xmlDoc(x), 'row').slice(0, 500);
+    const colIdx = ref => { const m = /^([A-Z]+)/.exec(ref || ''); return m ? [...m[1]].reduce((n, c) => n * 26 + c.charCodeAt(0) - 64, 0) - 1 : 0; };
+    const table = h('table');
+    for (const r of rows) {
+      const cells = []; let max = 0;
+      for (const c of byTag(r, 'c')) {
+        const i2 = colIdx(c.getAttribute('r')), t = c.getAttribute('t'), v = byTag(c, 'v')[0]?.textContent ?? byTag(c, 't').map(e => e.textContent).join('');
+        cells[i2] = t === 's' ? strings[+v] ?? '' : v ?? ''; max = Math.max(max, i2 + 1);
+      }
+      table.append(h('tr', {}, Array.from({ length: max }, (_, i3) => h('td', {}, cells[i3] ?? ''))));
+    }
+    area.append(table);
+    if (byTag(xmlDoc(x), 'row').length > 500) area.append(h('div', { class: 'hint' }, 'Alleen de eerste 500 rijen worden getoond.'));
+  };
+  sheets.forEach((s, i) => tabs.append(h('button', { onclick: () => show(i) }, s.name)));
+  if (sheets.length > 1) box.append(tabs);
+  box.append(area); await show(0);
+  return box;
+}
+async function pptxPreview(bytes) {
+  const z = await unzip(bytes);
+  const slides = z.names.filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
+  const box = h('div', { class: 'docprev' });
+  for (const [i, s] of slides.entries()) {
+    const d = xmlDoc(await z.text(s));
+    const paras = byTag(d, 'a:p').map(p => byTag(p, 'a:t').map(t => t.textContent).join('')).filter(Boolean);
+    box.append(h('div', { class: 'slide' }, h('span', { class: 'lbl' }, 'Dia ' + (i + 1)), paras.length ? [h('h3', {}, paras[0]), paras.slice(1).map(t => h('p', {}, t))] : h('p', { class: 'hint' }, '(alleen afbeeldingen)')));
+  }
+  return box;
+}
+
+/* ---------- mail-HTML veilig tonen ---------- */
+function sanitizeMailHTML(html, inline, allowRemote) {
+  const doc = new DOMParser().parseFromString(html || '', 'text/html');
+  doc.querySelectorAll('script,iframe,frame,frameset,object,embed,applet,form,input,button,textarea,select,base,meta[http-equiv],link').forEach(n => n.remove());
+  let remote = 0;
+  for (const el of doc.querySelectorAll('*')) {
+    for (const a of [...el.attributes]) {
+      const n = a.name.toLowerCase(), v = a.value.trim();
+      if (n.startsWith('on')) el.removeAttribute(a.name);
+      else if ((n === 'href' || n === 'src' || n === 'background' || n === 'action' || n === 'xlink:href') && /^\s*(javascript|vbscript|data:text)/i.test(v)) el.removeAttribute(a.name);
+    }
+    if (el.tagName === 'A') { el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener noreferrer'); }
+    for (const attr of ['src', 'background']) {
+      const v = el.getAttribute(attr); if (!v) continue;
+      const cid = /^cid:(.+)$/i.exec(v.trim());
+      if (cid) { const u = inline[cid[1]] || inline[decodeURIComponent(cid[1])]; if (u) el.setAttribute(attr, u); else el.removeAttribute(attr); }
+      else if (/^https?:/i.test(v) && !allowRemote) { el.setAttribute('data-blocked-' + attr, v); el.removeAttribute(attr); remote++; }
+    }
+    const st = el.getAttribute('style');
+    if (st && /url\s*\(/i.test(st)) {
+      el.setAttribute('style', st.replace(/url\s*\(\s*['"]?\s*cid:([^'")\s]+)\s*['"]?\s*\)/gi, (m, c) => inline[c] ? `url("${inline[c]}")` : 'none')
+        .replace(/url\s*\(\s*['"]?\s*https?:[^)]*\)/gi, m => { if (allowRemote) return m; remote++; return 'none'; }));
+    }
+  }
+  for (const s of doc.querySelectorAll('style')) s.textContent = s.textContent.replace(/@import[^;]+;/gi, '').replace(/url\s*\(\s*['"]?https?:[^)]*\)/gi, m => { if (allowRemote) return m; remote++; return 'none'; });
+  return { html: '<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:#fff;color:#111;font:14px/1.5 "Segoe UI",system-ui,sans-serif;overflow-wrap:anywhere}body{padding:14px 16px}img{max-width:100%;height:auto}table{max-width:100%}pre{white-space:pre-wrap}</style>' + doc.head.innerHTML + '</head><body>' + doc.body.innerHTML + '</body></html>', remote };
+}
+function mailFrame(html, inline) {
+  const wrap = h('div', { class: 'mailframe' });
+  const draw = allowRemote => {
+    wrap.innerHTML = '';
+    const r = sanitizeMailHTML(html, inline, allowRemote);
+    if (r.remote && !allowRemote) wrap.append(h('div', { class: 'mailwarn' }, h('span', { html: icon('shield', 14) }), `${r.remote} afbeelding${r.remote === 1 ? '' : 'en'} van internet geblokkeerd voor je privacy.`, h('button', { class: 'linkbtn', onclick: () => draw(true) }, 'Toch laden')));
+    const fr = h('iframe', { sandbox: 'allow-same-origin allow-popups allow-popups-to-escape-sandbox', title: 'E-mail', referrerpolicy: 'no-referrer' });
+    fr.srcdoc = r.html;
+    fr.addEventListener('load', () => {
+      const fit = () => { try { fr.style.height = Math.min(Math.max(fr.contentDocument.documentElement.scrollHeight, 80), 520) + 'px'; } catch (e) {} };
+      fit(); try { fr.contentDocument.querySelectorAll('img').forEach(i => i.addEventListener('load', fit)); } catch (e) {}
+    });
+    wrap.append(fr);
+  };
+  draw(false);
+  return wrap;
+}
+
+/* ---------- bijlagen-viewer ---------- */
+const ICON_FOR = t => /^image\//.test(t) ? 'image' : /pdf/.test(t) ? 'filetext' : /^audio\//.test(t) ? 'music' : /^video\//.test(t) ? 'video' : /sheet|excel|csv/.test(t) ? 'chart' : /presentation|powerpoint/.test(t) ? 'layout' : /word|document|text/.test(t) ? 'filetext' : 'file';
+function attType(a) { const t = a.type && a.type !== 'application/octet-stream' ? a.type : MailParser.guessType(a.name); return t.toLowerCase(); }
+async function attachmentPreview(a, bytes) {
+  const t = attType(a), ext = a.name.split('.').pop().toLowerCase();
+  const url = () => URL.createObjectURL(new Blob([bytes], { type: t }));
+  if (t.startsWith('image/') && t !== 'image/tiff') return h('div', { class: 'pv-img' }, h('img', { src: url(), alt: a.name }));
+  if (t === 'application/pdf') return h('iframe', { class: 'pv-pdf', src: url(), title: a.name });
+  if (t.startsWith('audio/')) return h('audio', { src: url(), controls: true, style: { width: '100%' } });
+  if (t.startsWith('video/')) return h('video', { src: url(), controls: true, class: 'pv-video' });
+  if (ext === 'docx') return docxPreview(bytes);
+  if (ext === 'xlsx') return xlsxPreview(bytes);
+  if (ext === 'pptx') return pptxPreview(bytes);
+  if (ext === 'msg' || ext === 'eml' || t === 'message/rfc822') {
+    const m = ext === 'msg' ? MailParser.parseMsg(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)) : MailParser.parseEml(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+    const inline = {}; for (const i of m.inline || []) inline[i.cid] = 'data:' + (i.type || 'image/png') + ';base64,' + B64.enc(i.data);
+    return h('div', {}, h('div', { class: 'mailbox', style: { marginBottom: '8px' } }, h('b', {}, m.subject || '(geen onderwerp)'), m.from ? h('div', {}, 'Van: ' + m.from) : null),
+      m.html ? mailFrame(m.html, inline) : h('pre', { class: 'mailbody' }, m.body), (m.attachments || []).length ? h('div', { class: 'hint' }, 'Bevat zelf ook ' + m.attachments.length + ' bijlage(n).') : null);
+  }
+  if (t === 'text/html') return mailFrame(new TextDecoder().decode(bytes), {});
+  if (t.startsWith('text/') || /json|xml|csv/.test(t) || ['txt', 'md', 'log', 'csv', 'json', 'xml', 'ini', 'yml', 'yaml'].includes(ext)) {
+    const txt = new TextDecoder().decode(bytes.subarray(0, 400000));
+    if (ext === 'csv' || t === 'text/csv') {
+      const sep = (txt.split('\n')[0].match(/;/g) || []).length > (txt.split('\n')[0].match(/,/g) || []).length ? ';' : ',';
+      return h('div', { class: 'docprev xlwrap' }, h('table', {}, txt.split(/\r?\n/).slice(0, 500).filter(Boolean).map(l => h('tr', {}, l.split(sep).map(c => h('td', {}, c.replace(/^"|"$/g, '')))))));
+    }
+    return h('pre', { class: 'pv-text' }, txt);
+  }
+  return null;
+}
+function openAttachmentViewer(list, index, load) {
+  let i = index;
+  const cache = new Map();
+  const get = async a => { if (!cache.has(a.id || a.name)) cache.set(a.id || a.name, await load(a)); return cache.get(a.id || a.name); };
+  const title = h('div', { class: 'pv-title' });
+  const area = h('div', { class: 'pv-area' });
+  const prev = ib('chevronleft', 'Vorige bijlage', () => { i = (i - 1 + list.length) % list.length; draw(); });
+  const next = ib('chevronright', 'Volgende bijlage', () => { i = (i + 1) % list.length; draw(); });
+  const dl = h('button', { class: 'btn primary sm', onclick: async () => { const a = list[i]; try { download(a.name, new Blob([await get(a)], { type: attType(a) })); } catch (e) { toast('Downloaden mislukt: ' + e.message); } } }, h('span', { html: icon('download', 14) }), 'Downloaden');
+  const all = list.length > 1 ? h('button', { class: 'btn sm', onclick: () => downloadAllAttachments(list, get) }, h('span', { html: icon('layers', 14) }), `Alle ${list.length} downloaden`) : null;
+  const bar = h('div', { class: 'pv-bar' }, list.length > 1 ? prev : null, title, list.length > 1 ? next : null, h('span', { class: 'grow' }), dl, all);
+  const draw = async () => {
+    const a = list[i];
+    title.innerHTML = ''; title.append(h('span', { html: icon(ICON_FOR(attType(a)), 18) }), h('b', {}, a.name), h('span', { class: 'cr-info' }, (a.size ? fmtSize(a.size) : '') + (list.length > 1 ? ` · ${i + 1} van ${list.length}` : '')));
+    area.innerHTML = ''; area.append(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Laden…'));
+    try {
+      const bytes = await get(a);
+      if (list[i] !== a) return;
+      const el = await attachmentPreview(a, bytes);
+      area.innerHTML = '';
+      area.append(el || h('div', { class: 'missing', style: { minHeight: '240px' } }, h('span', { html: icon(ICON_FOR(attType(a)), 40) }), h('b', {}, 'Geen voorbeeld beschikbaar'), h('span', {}, 'Dit bestandstype kan Streamline niet tonen. Download het om het te openen.')));
+    } catch (e) {
+      area.innerHTML = ''; area.append(h('div', { class: 'missing', style: { minHeight: '200px' } }, h('span', { html: icon('alert', 32) }), h('b', {}, 'Kon de bijlage niet tonen'), h('span', {}, e.name === 'NotFoundError' ? 'De bijlage is nog niet binnen. OneDrive is waarschijnlijk nog aan het synchroniseren.' : e.message)));
+    }
+  };
+  const m = openModal({ title: 'Bijlage', wide: true, body: [bar, area] });
+  m.el.classList.add('pv');
+  const key = e => { if (e.key === 'ArrowRight' && list.length > 1) next.click(); if (e.key === 'ArrowLeft' && list.length > 1) prev.click(); };
+  document.addEventListener('keydown', key);
+  const oc = m.close; m.close = () => { document.removeEventListener('keydown', key); oc(); };
+  draw();
+}
+async function downloadAllAttachments(list, get) {
+  toast(`Bezig met ${list.length} bijlagen…`);
+  try {
+    const names = new Set(), files = [];
+    for (const a of list) {
+      let n = a.name, k = 2; while (names.has(n.toLowerCase())) n = a.name.replace(/(\.[^.]+)?$/, ` (${k++})$1`); names.add(n.toLowerCase());
+      files.push({ name: n, data: await get(a) });
+    }
+    download('bijlagen.zip', makeZip(files));
+  } catch (e) { toast('Downloaden mislukt: ' + e.message, 5000); }
 }
 
 boot();
