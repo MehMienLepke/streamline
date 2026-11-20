@@ -68,11 +68,23 @@ eigen computer, met Streamline aan beide kanten open.
 - **Teksten (links):** klik op *+ Tekst* en plak of typ iets. Met het
   kopieerknopje onderin het blok staat de tekst op je klembord, met opmaak. Het
   prullenbakje verwijdert de tekst aan beide kanten.
-- **Bestanden (rechts):** sleep bestanden in het vak. Aan de andere kant
-  verschijnen ze vanzelf. Sleep ze daar naar je bureaublad of een map; daarna
-  haalt Streamline ze weg. Ging dat per ongeluk, klik dan op *Ongedaan maken*.
+- **Bestanden (rechts):** sleep bestanden of complete mappen in het vak, of
+  kies *Toevoegen → Bestanden…* of *Complete map…*. Aan de andere kant
+  verschijnen ze vanzelf als tegels, met een voorbeeldje bij afbeeldingen. Klik
+  op een map om erin te kijken; bovenin zie je waar je bent.
+- **Naar je bureaublad:** sleep een tegel naar je bureaublad of een map; daarna
+  haalt Streamline hem weg. Ging dat per ongeluk, klik dan op *Ongedaan maken*.
   Weggehaalde bestanden blijven nog 7 dagen in de map `.prullenbak`.
-- Met het oogje bekijk je een bestand, met het pijltje sla je het op.
+- **Alles tegelijk:** de browser kan maar één bestand tegelijk naar je
+  bureaublad slepen. Daarom zijn er twee manieren:
+  - *Alles downloaden* zet alle bestanden in je Downloads-map. Mappen komen
+    daar als zip-bestand. Chrome vraagt de eerste keer of de site meerdere
+    bestanden mag downloaden; klik dan op *Toestaan*. Daarna kun je met
+    *Uit Streamline halen* alles in één keer opruimen.
+  - De balk *Sleep alles naar je bureaublad* onderin geeft alles in één
+    zip-bestand. Een map slepen geeft ook een zip.
+- Met het oogje bekijk je een bestand (of dubbelklik op de tegel), met het
+  pijltje sla je het op.
 
 **Belangrijk:** beide kanten moeten dezelfde map gebruiken. Standaard is dat de
 map `Citrix naar Desktop` in je Streamline-map. Gebruik je in Citrix en op je

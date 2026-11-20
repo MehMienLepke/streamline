@@ -1,6 +1,6 @@
 {
-  "version": "1.3.0",
+  "version": "1.4.0",
   "groot": false,
-  "notes": "Nieuw: module Citrix to Desktop (teksten kopiëren en bestanden overzetten tussen Citrix en je eigen computer). Streamline neemt nu ook vanzelf wijzigingen over die in een ander venster of op een andere computer zijn gedaan.",
+  "notes": "Citrix to Desktop: bestanden als tegels, complete mappen uploaden, knop \"Alles downloaden\" en alles in één keer (als zip) naar je bureaublad slepen.",
   "file": "streamline.html"
 }
