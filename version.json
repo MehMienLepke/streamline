@@ -1,6 +1,6 @@
 {
-  "version": "1.4.2",
+  "version": "1.4.3",
   "groot": false,
-  "notes": "Citrix to Desktop: \"Alles downloaden\" geeft nu één zip-bestand in plaats van alle bestanden los. Bestanden knipperen niet meer.",
+  "notes": "Citrix to Desktop: bestanden erin slepen werkt weer betrouwbaar. \"Alles downloaden\" geeft één zip-bestand.",
   "file": "streamline.html"
 }

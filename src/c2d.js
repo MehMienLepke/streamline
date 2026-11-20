@@ -118,16 +118,31 @@ async function c2dCopy(src, dest, name) {
   for await (const [n, hd] of src.entries()) await c2dCopy(hd, d, n);
 }
 // uit een sleepactie: bestanden én complete mappen (met submappen) uitlezen
-async function c2dFromEntries(entries) {
+// uit een sleepactie: losse bestanden zoals de browser ze geeft, complete mappen (met submappen) via hun inhoud
+const C2D_OWN = 'application/x-streamline-c2d'; // markeert slepen vanuit deze module zelf
+function c2dDropSources(dt) {
   const out = [];
+  for (const it of [...(dt.items || [])]) {
+    if (it.kind !== 'file') continue;
+    let en = null; try { en = it.webkitGetAsEntry?.(); } catch (e) {}
+    if (en?.isDirectory) out.push({ dir: en });
+    else { const f = it.getAsFile(); if (f) out.push({ file: f }); }
+  }
+  if (!out.length) for (const f of [...(dt.files || [])]) out.push({ file: f });
+  return out;
+}
+async function c2dFromSources(sources) {
+  const out = []; let failed = 0;
   const walk = async (en, prefix) => {
-    if (en.isFile) { const f = await new Promise((res, rej) => en.file(res, rej)); out.push({ path: prefix + en.name, file: f }); }
+    if (en.isFile) { try { out.push({ path: prefix + en.name, file: await new Promise((res, rej) => en.file(res, rej)) }); } catch (e) { failed++; } }
     else if (en.isDirectory) {
       const r = en.createReader(); let batch;
-      do { batch = await new Promise((res, rej) => r.readEntries(res, rej)); for (const c of batch) await walk(c, prefix + en.name + '/'); } while (batch.length);
+      try { do { batch = await new Promise((res, rej) => r.readEntries(res, rej)); for (const c of batch) await walk(c, prefix + en.name + '/'); } while (batch.length); }
+      catch (e) { failed++; }
     }
   };
-  for (const en of entries) await walk(en, '');
+  for (const s of sources) { if (s.dir) await walk(s.dir, ''); else out.push({ path: s.file.name || 'bestand', file: s.file }); }
+  if (failed) toast(`${failed} ${failed === 1 ? 'onderdeel' : 'onderdelen'} kon niet gelezen worden`, 5000);
   return out.filter(x => !C2D_SKIP.test(x.path.split('/').pop()));
 }
 // list: [{ path: 'map/sub/bestand.pdf' of 'bestand.pdf', file }]
@@ -340,6 +355,7 @@ reg({
           return toast(z?.big ? 'Te groot om als zip te slepen — gebruik “Alles downloaden”' : 'Zip wordt nog klaargemaakt… probeer het zo nog eens', 4000);
         }
         e.dataTransfer.setData('DownloadURL', `application/zip:${zipName}:${z.url}`);
+        e.dataTransfer.setData(C2D_OWN, '1');
         e.dataTransfer.setData('text/plain', zipName);
         e.dataTransfer.effectAllowed = 'copy';
         st.dragging = key; el.classList.add('dragged');
@@ -377,6 +393,7 @@ reg({
       tile.addEventListener('dragstart', e => {
         // Chrome/Edge: bestand naar het bureaublad slepen
         e.dataTransfer.setData('DownloadURL', `${type}:${f.name}:${url}`);
+        e.dataTransfer.setData(C2D_OWN, '1');
         e.dataTransfer.setData('text/plain', f.name);
         e.dataTransfer.effectAllowed = 'copy';
         st.dragging = f.path; tile.classList.add('dragged');
@@ -401,15 +418,13 @@ reg({
     const zone = h('div', { class: 'c2d-zone' + (kids.length ? ' has' : '') },
       kids.length ? [tiles, allChip] : h('div', { class: 'cr-drop', onclick: () => !editing && fileInp.click(), html: icon('upload', 30) + (here ? '<b style="color:var(--ink)">Deze map is leeg</b><span>Sleep bestanden of mappen hierheen.</span>' : '<b style="color:var(--ink)">Sleep bestanden of mappen hierheen</b><span>Ze komen aan de andere kant tevoorschijn. Sleep ze daar naar je bureaublad.</span>') }),
       fileInp, dirInp);
-    zone.addEventListener('dragover', e => { if (editing || st.dragging || ![...e.dataTransfer.types].some(t => t === 'Files' || t === 'text/plain')) return; e.preventDefault(); e.stopPropagation(); zone.classList.add('dropping'); });
+    zone.addEventListener('dragover', e => { const ty = [...e.dataTransfer.types]; if (editing || ty.includes(C2D_OWN) || !ty.some(t => t === 'Files' || t === 'text/plain')) return; e.preventDefault(); e.stopPropagation(); zone.classList.add('dropping'); });
     zone.addEventListener('dragleave', e => { if (!zone.contains(e.relatedTarget)) zone.classList.remove('dropping'); });
     zone.addEventListener('drop', async e => {
-      if (editing || st.dragging) return; e.preventDefault(); e.stopPropagation(); zone.classList.remove('dropping');
-      // mappen herkennen: dit moet meteen, vóór er iets anders gebeurt
-      const entries = [...(e.dataTransfer.items || [])].filter(i => i.kind === 'file').map(i => i.webkitGetAsEntry?.()).filter(Boolean);
-      const files = [...e.dataTransfer.files];
-      if (entries.length) return c2dAddFiles(item, await c2dFromEntries(entries));
-      if (files.length) return c2dAddFiles(item, files.map(f => ({ path: f.name, file: f })));
+      if (editing || [...e.dataTransfer.types].includes(C2D_OWN)) return; e.preventDefault(); e.stopPropagation(); zone.classList.remove('dropping');
+      // dit moet meteen, vóór er iets anders gebeurt: daarna geeft de browser de bestanden niet meer
+      const sources = c2dDropSources(e.dataTransfer);
+      if (sources.length) { try { return await c2dAddFiles(item, await c2dFromSources(sources)); } catch (err) { return toast('Opslaan mislukt: ' + err.message, 6000); } }
       const txt = e.dataTransfer.getData('text/html') || esc(e.dataTransfer.getData('text/plain'));
       if (txt) { const t = { id: uid(), html: sanitize(txt), created: Date.now() }; st.texts.set(t.id, t); await c2dSaveText(item, t); ctx.rerender(); toast('Als tekst toegevoegd'); }
     });
