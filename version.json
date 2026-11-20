@@ -1,6 +1,6 @@
 {
-  "version": "1.4.1",
+  "version": "1.4.2",
   "groot": false,
-  "notes": "Citrix to Desktop: bestanden knipperen niet meer. (1.4.0: tegels, complete mappen uploaden, \"Alles downloaden\" en alles als zip naar je bureaublad slepen.)",
+  "notes": "Citrix to Desktop: \"Alles downloaden\" geeft nu één zip-bestand in plaats van alle bestanden los. Bestanden knipperen niet meer.",
   "file": "streamline.html"
 }

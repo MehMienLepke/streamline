@@ -77,10 +77,9 @@ eigen computer, met Streamline aan beide kanten open.
   Weggehaalde bestanden blijven nog 7 dagen in de map `.prullenbak`.
 - **Alles tegelijk:** de browser kan maar één bestand tegelijk naar je
   bureaublad slepen. Daarom zijn er twee manieren:
-  - *Alles downloaden* zet alle bestanden in je Downloads-map. Mappen komen
-    daar als zip-bestand. Chrome vraagt de eerste keer of de site meerdere
-    bestanden mag downloaden; klik dan op *Toestaan*. Daarna kun je met
-    *Uit Streamline halen* alles in één keer opruimen.
+  - *Alles downloaden* zet alles in één zip-bestand in je Downloads-map, met
+    de mappen erin. Daarna kun je met *Uit Streamline halen* alles in één keer
+    opruimen.
   - De balk *Sleep alles naar je bureaublad* onderin geeft alles in één
     zip-bestand. Een map slepen geeft ook een zip.
 - Met het oogje bekijk je een bestand (of dubbelklik op de tegel), met het

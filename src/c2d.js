@@ -204,17 +204,17 @@ function c2dPrepZip(st, key, prefix, entries) {
   if (z.big) return;
   c2dZip(st, prefix, entries).then(b => { if (st.zips.get(key) === z) { z.blob = b; z.url = URL.createObjectURL(b); } }).catch(() => st.zips.delete(key));
 }
-async function c2dDownloadAll(item, kids) {
+// Eén download: een los bestand gewoon zoals het is, al het andere samen in één zip
+async function c2dDownloadAll(item, kids, prefix, zipName) {
   const st = C2D.get(item.id); if (!kids.length) return;
-  toast(kids.length === 1 ? 'Downloaden…' : `${kids.length} onderdelen downloaden…`);
+  const single = kids.length === 1 && !kids[0].dir;
+  toast(single ? 'Downloaden…' : 'Zip-bestand maken…');
   try {
-    for (const en of kids) {
-      if (en.dir) download(en.name + '.zip', await c2dZip(st, en.path + '/', [en]));
-      else { let file = en.file; try { file = await en.handle.getFile(); } catch (e) {} download(en.name, file); }
-      await new Promise(r => setTimeout(r, 350)); // Chrome slaat downloads over die te snel achter elkaar komen
-    }
+    if (single) { let file = kids[0].file; try { file = await kids[0].handle.getFile(); } catch (e) {} download(kids[0].name, file); }
+    else download(zipName, await c2dZip(st, prefix, kids));
   } catch (e) { return toast('Downloaden mislukt: ' + e.message, 5000); }
-  toastAction(kids.length === 1 ? `“${kids[0].name}” gedownload. Uit Streamline halen?` : `${kids.length} onderdelen gedownload. Uit Streamline halen?`, 'Uit Streamline halen',
+  const what = single ? `“${kids[0].name}”` : `“${zipName}”`;
+  toastAction(`${what} gedownload. Uit Streamline halen?`, 'Uit Streamline halen',
     () => c2dTrash(item, kids, kids.length === 1 ? `“${kids[0].name}” uit Streamline gehaald` : `${kids.length} onderdelen uit Streamline gehaald`), 15000);
 }
 async function c2dSaveText(item, t) {
@@ -357,7 +357,7 @@ reg({
         h('div', { class: 'th', html: icon('folder', 34) }),
         h('b', {}, d.name), h('small', {}, inside.length === 1 ? '1 bestand' : `${inside.length} bestanden`),
         h('div', { class: 'acts' },
-          act('download', 'Downloaden (zip)', () => c2dDownloadAll(item, [d])),
+          act('download', 'Downloaden (zip)', () => c2dDownloadAll(item, [d], d.path + '/', d.name + '.zip')),
           act('trash', 'Map verwijderen', () => c2dTrash(item, [d]))));
       zipDrag(tile, 'dir:' + d.path, d.path + '/', [d], d.name + '.zip', `“${d.name}”`);
       tiles.append(tile);
@@ -423,7 +423,7 @@ reg({
       h('div', { class: 'c2d-head' }, h('span', { html: icon(here ? 'folder' : 'file', 15) }), h('span', { class: 'crumb' }, crumbs),
         h('span', { class: 'grow' }),
         h('span', { class: 'btns' },
-          kids.length ? h('button', { class: 'btn sm', title: 'Alles hieronder downloaden naar je Downloads-map (mappen als zip)', onclick: () => c2dDownloadAll(item, kids) }, h('span', { html: icon('download', 13) }), 'Alles downloaden') : null,
+          kids.length ? h('button', { class: 'btn sm', title: 'Alles hieronder in één zip-bestand downloaden', onclick: () => c2dDownloadAll(item, kids, here ? here + '/' : '', (here ? here.split('/').pop() : C2D_FOLDER) + '.zip') }, h('span', { html: icon('download', 13) }), 'Alles downloaden') : null,
           addBtn)),
       zone);
     el.append(h('div', { class: 'c2d', style: { gridTemplateColumns: `${c.split || 50}fr ${100 - (c.split || 50)}fr` } }, left, right),
