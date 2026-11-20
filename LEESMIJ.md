@@ -49,6 +49,7 @@ een tekstbestand; kopieer het als back-up of geef het aan een collega.
 | Link-knop | Opent een website in een nieuw tabblad. Icoon uit de catalogus of de favicon van de site. |
 | Actieknop | Opent één of meer websites en kan daarna wachten, klikken, velden invullen, tekst typen en toetsen indrukken. Met `{vraag:Zoekterm}` vraagt hij bij het klikken om een waarde. |
 | Teamtaken / Teamnotities / Teamleden | Zie hoofdstuk 8. |
+| Citrix to Desktop | Links teksten met een kopieerknop, rechts een vak voor bestanden. Zie hoofdstuk 3a. |
 | Afbeelding | Toont één afbeelding: als vormgeving, of met een link als klikbare snelkoppeling. Sleep een afbeelding op de widget of kies er een in de instellingen. Kies *Vullen* of *Passend*, de hoeken, en een onderschrift. |
 | Radio | Nederlandse zenders (lijst van nederland.fm). Zenders zijn aan te passen. |
 | To do's | Prioriteit hoog (rood), medium (oranje), laag (geel). Nieuwe taken worden op prioriteit ingevoegd; daarna versleep je ze zelf. Teamtaken op jouw naam staan er ook in. Sleep een e-mail uit Outlook erop: de onderwerpregel wordt de taak. Belletje = herinnering. |
@@ -58,6 +59,29 @@ een tekstbestand; kopieer het als back-up of geef het aan een collega.
 **Herinneringen** geven een geluid, een melding in beeld en (als je dat
 toestaat) een Windows-melding. Ze werken zolang Streamline open staat in een
 tabblad.
+
+## 3a. Citrix to Desktop
+
+Bedoeld om teksten en bestanden over te zetten tussen een Citrix-omgeving en je
+eigen computer, met Streamline aan beide kanten open.
+
+- **Teksten (links):** klik op *+ Tekst* en plak of typ iets. Met het
+  kopieerknopje onderin het blok staat de tekst op je klembord, met opmaak. Het
+  prullenbakje verwijdert de tekst aan beide kanten.
+- **Bestanden (rechts):** sleep bestanden in het vak. Aan de andere kant
+  verschijnen ze vanzelf. Sleep ze daar naar je bureaublad of een map; daarna
+  haalt Streamline ze weg. Ging dat per ongeluk, klik dan op *Ongedaan maken*.
+  Weggehaalde bestanden blijven nog 7 dagen in de map `.prullenbak`.
+- Met het oogje bekijk je een bestand, met het pijltje sla je het op.
+
+**Belangrijk:** beide kanten moeten dezelfde map gebruiken. Standaard is dat de
+map `Citrix naar Desktop` in je Streamline-map. Gebruik je in Citrix en op je
+eigen computer dezelfde Streamline-map (bijvoorbeeld via OneDrive of een
+netwerkschijf die je aan beide kanten ziet), dan werkt het meteen. Zo niet, kies
+dan in de instellingen van de widget aan beide kanten een map die je in Citrix
+én op je eigen computer kunt bereiken.
+
+Slepen naar het bureaublad werkt in Chrome en Edge.
 
 ## 4. Toetsaanslagen: de Streamline Helper
 
@@ -189,6 +213,16 @@ widget *Teamleden*.
 - De maker van het team kan het wachtwoord wijzigen. Daarna moet iedereen het
   nieuwe wachtwoord één keer invullen.
 - Wachtwoord kwijt = gegevens kwijt. Er is geen herstel.
+
+## 8a. Live bijwerken
+
+Heb je Streamline met hetzelfde instellingenbestand in meerdere vensters of op
+meerdere computers open, dan neemt elk venster wijzigingen van de andere kant
+binnen een paar seconden vanzelf over, zonder verversen. Ben je zelf net iets aan
+het typen of aanpassen, dan wacht Streamline tot je klaar bent. Dit kost
+nauwelijks geheugen of rekenkracht: Streamline kijkt elke paar seconden alleen
+naar de wijzigingsdatum van het bestand, en leest het pas als er iets veranderd
+is. In een tabblad op de achtergrond staat dit stil.
 
 ## 9. Privacy in het kort
 

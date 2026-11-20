@@ -5,7 +5,7 @@
    zijn: GitHub (alleen om updates/widgets op te halen, er gaat niets heen),
    radiostreams, en websites/favicons die je zelf in een knop zet.
    ========================================================================== */
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '1.3.0';
 const DEFAULT_REPO = 'MehMienLepke/streamline';
 const SCHEMA = 1;
 const $ = (s, r = document) => r.querySelector(s);
@@ -226,8 +226,34 @@ function save() {
   S.meta.updated = Date.now();
   cacheLocal();
   $('#savedot') && $('#savedot').classList.add('busy');
-  clearTimeout(saveTimer);
+  clearTimeout(saveTimer); dirty = true;
   saveTimer = setTimeout(flush, 450);
+}
+/* ---------- live bijwerken ----------
+   Staat je instellingenbestand open in een ander venster of op een andere computer
+   (bijv. Citrix en je eigen pc met dezelfde OneDrive-map), dan neemt Streamline
+   wijzigingen van de andere kant vanzelf over. Elke 3 seconden wordt alleen de
+   wijzigingsdatum van het bestand bekeken; dat kost vrijwel niets. */
+let dirty = false, fileStamp = 0;
+async function personalStamp() { try { return (await (await getHandle(FS.file)).getFile()).lastModified; } catch (e) { return 0; } }
+const comparable = st => JSON.stringify({ ...st, activePage: 0, meta: { ...st.meta, updated: 0 } });
+async function watchPersonal() {
+  if (!S || !FS.dir || !FS.perm || !FS.file || document.hidden || dirty) return;
+  const stamp = await personalStamp();
+  if (!stamp || stamp === fileStamp) return;
+  if (!fileStamp) { fileStamp = stamp; return; }
+  const a = document.activeElement;
+  const busy = editing || modalStack.length || openPop || (a && a.closest && a.closest('#canvas') && a.matches('input,textarea,select,[contenteditable="true"]'));
+  if (busy) return; // even wachten tot je klaar bent
+  let fresh; try { fresh = migrate(await readJSON(FS.file)); } catch (e) { return; } // half geschreven: volgende keer opnieuw
+  fileStamp = stamp;
+  if (comparable(fresh) === comparable(S)) return;
+  if (fresh.pages.some(p => p.id === S.activePage)) fresh.activePage = S.activePage;
+  fresh.meta.title = fileTitle(FS.file);
+  const teamChanged = JSON.stringify(fresh.team?.id) !== JSON.stringify(S.team?.id);
+  S = fresh; cacheLocal(); applyTheme(); renderAll();
+  if (teamChanged && typeof teamStart === 'function') teamStart();
+  toast('Bijgewerkt met wijzigingen uit een ander venster');
 }
 /* Chrome trekt de schrijftoestemming voor een map soms stilletjes in (lang open tabblad,
    slaapstand, browser herstart). Dan vragen we hem opnieuw zodra dat mag (bij een klik),
@@ -264,7 +290,7 @@ async function flush() {
   if (FS.dir && FS.file) {
     if (!(await ensurePerm())) permissionLost();
     else {
-      try { await writeJSON(FS.file, S); }
+      try { await writeJSON(FS.file, S); dirty = false; fileStamp = await personalStamp(); }
       catch (e) {
         if (e.name === 'NotAllowedError' || e.name === 'SecurityError') { FS.perm = false; permissionLost(); }
         else toast('Opslaan in je map mislukt: ' + e.message, 5000);
@@ -1048,13 +1074,14 @@ async function openFromDir(cached) {
     S = st; FS.file = name;
   }
   S.meta.title = fileTitle(FS.file);
+  fileStamp = await personalStamp();
   await IDB.set('lastFile', FS.file);
   cacheLocal();
 }
 async function switchFile(name) {
   await flush();
   const st = migrate(await readJSON(name));
-  S = st; FS.file = name; S.meta.title = fileTitle(name); await IDB.set('lastFile', name); cacheLocal();
+  S = st; FS.file = name; S.meta.title = fileTitle(name); fileStamp = await personalStamp(); dirty = false; await IDB.set('lastFile', name); cacheLocal();
   applyTheme(); renderAll(); if (editing) { renderRepo(); renderSettings(); }
   teamStart();
   renderTop(); toast('Geopend: ' + currentTitle());
@@ -1107,6 +1134,8 @@ function start() {
   applyTheme(); renderAll();
   if (!FS.dir && FS.supported) showBanner('Je instellingen staan nu alleen in deze browser. Koppel een map om ze als bestand te bewaren en te kunnen delen.', 'Map koppelen', async () => { try { await pickDir(); hideBanner(); FS.file = await freeFileName(S.meta.title); S.meta.title = fileTitle(FS.file); await flush(); await IDB.set('lastFile', FS.file); renderTop(); toast('Opgeslagen als ' + FS.file); } catch (e) {} });
   checkReminders(); setInterval(checkReminders, 10000);
+  setInterval(watchPersonal, 3000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) watchPersonal(); });
   setInterval(() => { for (const it of [...S.global, ...currentPage().items]) if (it.type === 'title' && /\{(groet|tijd|datum)\}/i.test(it.config.text)) buildItem(it); }, 60000);
   if (S.update.repo) setTimeout(() => checkUpdate(false), 1500);
   teamStart();
