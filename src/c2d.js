@@ -74,7 +74,8 @@ async function c2dSync(item, force) {
       if (prev && prev.stamp === t.stamp) { tmap.set(id, prev); continue; }
       try { tmap.set(id, { ...JSON.parse(await t.file.text()), id, stamp: t.stamp }); } catch (e) { if (prev) tmap.set(id, prev); }
     }
-    const sig = [...tmap.values()].map(t => t.id + t.stamp).join() + '|' + tree.files.map(f => f.path + f.stamp + f.size).join() + '|' + tree.dirs.map(d => d.path).join();
+    // volgorde maakt niet uit: alleen opnieuw tekenen als er echt iets veranderd is
+    const sig = [...tmap.values()].map(t => t.id + t.stamp).sort().join() + '|' + tree.files.map(f => f.path + ':' + f.stamp + ':' + f.size).sort().join() + '|' + tree.dirs.map(d => d.path).sort().join();
     st.texts = tmap;
     st.files = tree.files.sort((a, b) => b.stamp - a.stamp);
     st.dirs = tree.dirs.sort((a, b) => a.name.localeCompare(b.name, 'nl'));
@@ -271,12 +272,14 @@ reg({
     const item = ctx.item, c = ctx.config;
     let st = C2D.get(item.id);
     if (!st) {
-      st = { texts: new Map(), files: [], dirs: [], path: '', zips: new Map(), sig: '', status: 'load', urls: [] };
+      st = { texts: new Map(), files: [], dirs: [], path: '', zips: new Map(), sig: '', status: 'load', urls: new Map() };
       C2D.set(item.id, st);
       st.timer = setInterval(() => c2dSync(item), C2D_POLL);
       c2dSync(item, true);
     }
-    st.urls.forEach(u => URL.revokeObjectURL(u)); st.urls = [];
+    // bestandslinks hergebruiken zolang het bestand niet verandert: zo knipperen voorbeeldjes niet
+    const usedUrls = new Set();
+    const urlFor = f => { const k = f.path + ':' + f.stamp + ':' + f.size; let u = st.urls.get(k); if (!u) { u = URL.createObjectURL(f.file); st.urls.set(k, u); } usedUrls.add(k); return u; };
     if (st.status !== 'ok') {
       const msg = {
         load: ['clock', 'Laden…', ''],
@@ -360,12 +363,12 @@ reg({
       tiles.append(tile);
     }
     for (const f of herefiles) {
-      const url = URL.createObjectURL(f.file); st.urls.push(url);
+      const url = urlFor(f);
       const type = f.file.type || MailParser.guessType(f.name);
       const dot = f.name.lastIndexOf('.'), ext = dot > 0 ? f.name.slice(dot + 1, dot + 5).toUpperCase() : '';
       const isImg = /^image\/(png|jpe?g|gif|webp|bmp|svg|avif)/.test(type) && f.size < 25e6;
       const tile = h('div', { class: 'c2d-tile', draggable: 'true', title: `${f.name}\n${fmtSize(f.size)} · ${timeAgo(f.stamp)}\nSleep naar je bureaublad of een map`, ondblclick: () => view(herefiles, f) },
-        h('div', { class: 'th' + (isImg ? ' img' : '') }, isImg ? h('img', { src: url, alt: '', draggable: 'false', loading: 'lazy' }) : [h('span', { html: icon(ICON_FOR(type), 30) }), ext ? h('i', { class: 'ext' }, ext) : null]),
+        h('div', { class: 'th' + (isImg ? ' img' : '') }, isImg ? h('img', { src: url, alt: '', draggable: 'false', decoding: 'sync' }) : [h('span', { html: icon(ICON_FOR(type), 30) }), ext ? h('i', { class: 'ext' }, ext) : null]),
         h('b', {}, f.name), h('small', {}, fmtSize(f.size)),
         h('div', { class: 'acts' },
           act('eye', 'Bekijken', () => view(herefiles, f)),
@@ -384,6 +387,7 @@ reg({
       });
       tiles.append(tile);
     }
+    for (const [k, u] of st.urls) if (!usedUrls.has(k)) { URL.revokeObjectURL(u); st.urls.delete(k); }
     const fileInp = h('input', { type: 'file', multiple: true, style: { display: 'none' }, onchange: () => { c2dAddFiles(item, [...fileInp.files].map(f => ({ path: f.name, file: f }))); fileInp.value = ''; } });
     const dirInp = h('input', { type: 'file', multiple: true, webkitdirectory: true, style: { display: 'none' }, onchange: () => { c2dAddFiles(item, [...dirInp.files].filter(f => !C2D_SKIP.test(f.name)).map(f => ({ path: f.webkitRelativePath || f.name, file: f }))); dirInp.value = ''; } });
     let allChip = null;

@@ -1,6 +1,6 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.1",
   "groot": false,
-  "notes": "Citrix to Desktop: bestanden als tegels, complete mappen uploaden, knop \"Alles downloaden\" en alles in één keer (als zip) naar je bureaublad slepen.",
+  "notes": "Citrix to Desktop: bestanden knipperen niet meer. (1.4.0: tegels, complete mappen uploaden, \"Alles downloaden\" en alles als zip naar je bureaublad slepen.)",
   "file": "streamline.html"
 }
